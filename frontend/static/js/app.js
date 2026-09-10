@@ -190,8 +190,8 @@ async function openDetail(documentName, retryCount = 0) {
   try {
     const res = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentName)}`);
     if (!res.ok) {
-      if (res.status === 404 && retryCount < 6) {
-        setStatus("Waiting for the processing record...", "busy");
+      if ([404, 502, 503, 504].includes(res.status) && retryCount < 12) {
+        setStatus("Service is waking up; retrying...", "busy");
         setTimeout(() => openDetail(documentName, retryCount + 1), 2000);
         return;
       }
@@ -205,6 +205,9 @@ async function openDetail(documentName, retryCount = 0) {
 }
 
 function openDetailFromResponse(doc) {
+  if (doc.processing_status === "FAILED") {
+    setStatus(`Processing failed: ${doc.error?.message || "see the detail panel."}`, "error");
+  }
   els.detailType.textContent = DOC_TYPE_LABELS[doc.document_type] || doc.document_type;
   els.detailTitle.textContent = doc.document_name;
 
@@ -219,6 +222,8 @@ function openDetailFromResponse(doc) {
   const fieldEntries = Object.entries(extracted).filter(([key]) => key !== "line_items");
   els.fieldsGrid.innerHTML = doc.processing_status === "PROCESSING"
     ? `<div class="field-card processing-state"><div class="field-card__value">Extraction is still running...</div><div class="field-card__evidence">OCR and financial analysis are running in the background. This panel will refresh automatically.</div></div>`
+    : doc.processing_status === "FAILED"
+    ? `<div class="field-card is-missing"><div class="field-card__value">Processing failed</div><div class="field-card__evidence">${escapeHtml(doc.error?.message || "The document could not be extracted.")}</div></div>`
     : fieldEntries.length
     ? fieldEntries.map(([key, field]) => renderFieldCard(key, field)).join("")
     : `<div class="field-card">No extracted fields available.</div>`;
