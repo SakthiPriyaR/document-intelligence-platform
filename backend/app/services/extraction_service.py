@@ -9,7 +9,6 @@ inventing values that aren't actually present in the document.
 The provider is isolated behind `run_extraction()` so a different
 model/provider can be swapped in by changing this module only.
 """
-import io
 import json
 import re
 
@@ -122,7 +121,16 @@ def _parse_json_response(raw_response: str) -> dict:
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None = None) -> str:
-    import google.generativeai as genai
+    """Call Gemini using Google's current ``google-genai`` SDK.
+
+    The old ``google-generativeai`` SDK exposed a different response/config
+    surface and is no longer the recommended path for current Gemini models.
+    Keeping the client local to this function also means the app can still
+    start when Gemini is not configured and return a useful configuration
+    error only when extraction is requested.
+    """
+    from google import genai
+    from google.genai import types
 
     settings = get_settings()
     if not settings.GEMINI_API_KEY:
@@ -131,41 +139,52 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
             "Set it as an environment variable to enable AI extraction."
         )
 
-    genai.configure(api_key=settings.GEMINI_API_KEY)
+    client = genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=types.HttpOptions(
+            timeout=settings.LLM_REQUEST_TIMEOUT_SECONDS * 1000,
+        ),
+    )
     active_model = settings.GEMINI_MODEL
-    model = genai.GenerativeModel(model_name=active_model, system_instruction=system_prompt)
+
+    def _status_code(exc: Exception) -> int | None:
+        code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+        if isinstance(code, int):
+            return code
+        match = re.search(r"\b(4\d\d|5\d\d)\b", str(exc))
+        return int(match.group(1)) if match else None
 
     last_exc: Exception | None = None
     for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
         try:
-            generation_config = {
-                "temperature": 0,
-                "response_mime_type": "application/json",
-                "max_output_tokens": 4000,
-            }
-            request_options = {"timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS}
+            config = types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0,
+                response_mime_type="application/json",
+                max_output_tokens=4000,
+            )
             if image_bytes:
-                from PIL import Image
-                with Image.open(io.BytesIO(image_bytes)) as image:
-                    response = model.generate_content(
-                        [user_prompt, image], generation_config=generation_config,
-                        request_options=request_options,
-                    )
-            else:
-                response = model.generate_content(
-                    user_prompt, generation_config=generation_config,
-                    request_options=request_options,
+                image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+                response = client.models.generate_content(
+                    model=active_model,
+                    contents=[user_prompt, image],
+                    config=config,
                 )
-            return response.text
+            else:
+                response = client.models.generate_content(
+                    model=active_model,
+                    contents=user_prompt,
+                    config=config,
+                )
+            return getattr(response, "text", "") or ""
         except Exception as exc:  # network / rate-limit / API errors
             last_exc = exc
             logger.warning("LLM call attempt %d failed: %s", attempt, exc)
-            if getattr(exc, "code", None) == 404 and active_model != "gemini-3.6-flash":
+            if _status_code(exc) == 404 and active_model != "gemini-3.6-flash":
                 active_model = "gemini-3.6-flash"
-                model = genai.GenerativeModel(model_name=active_model, system_instruction=system_prompt)
                 logger.info("Gemini model unavailable; retrying with fallback model=%s", active_model)
                 continue
-            if getattr(exc, "code", None) in (400, 401, 403):
+            if _status_code(exc) in (400, 401, 403):
                 break
 
     detail = str(last_exc or "unknown error").replace(settings.GEMINI_API_KEY or "", "[redacted]")
