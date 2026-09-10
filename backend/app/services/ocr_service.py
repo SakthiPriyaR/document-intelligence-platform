@@ -77,6 +77,25 @@ def _ocr_image_bytes(raw: bytes) -> str:
         )
 
 
+def _prepare_image_for_vision(raw: bytes) -> bytes:
+    """Normalize camera orientation and shrink the image before API transfer."""
+    from PIL import Image, ImageOps
+
+    settings = get_settings()
+    with Image.open(io.BytesIO(raw)) as source:
+        image = ImageOps.exif_transpose(source).convert("RGB")
+        longest_side = max(image.size)
+        if longest_side > settings.OCR_MAX_IMAGE_DIM:
+            scale = settings.OCR_MAX_IMAGE_DIM / longest_side
+            resized = (max(1, int(image.width * scale)), max(1, int(image.height * scale)))
+            image = image.resize(resized, Image.Resampling.LANCZOS)
+        output = io.BytesIO()
+        image.save(output, format="JPEG", quality=85, optimize=True)
+        prepared = output.getvalue()
+    logger.info("Prepared image for vision: %d -> %d bytes", len(raw), len(prepared))
+    return prepared
+
+
 def _extract_native_pdf_text(raw: bytes) -> list[str]:
     import pdfplumber
 
@@ -115,7 +134,7 @@ def extract_text(content_type: str, raw: bytes) -> OCRResult:
             # Preserve the original image for Gemini vision. This bypasses
             # local Tesseract for camera photographs, which is substantially
             # faster and handles rotated/complex invoice layouts better.
-            return OCRResult([PageText(1, "", "vision")], image_bytes=raw)
+            return OCRResult([PageText(1, "", "vision")], image_bytes=_prepare_image_for_vision(raw))
 
         if content_type == "application/pdf":
             native_texts = _extract_native_pdf_text(raw)
