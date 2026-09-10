@@ -32,7 +32,7 @@ class ProcessedDocument(Base):
     document_name: Mapped[str] = mapped_column(String, index=True, nullable=False)
     document_type: Mapped[str] = mapped_column(String, index=True, nullable=False)
 
-    processing_status: Mapped[str] = mapped_column(String, index=True, nullable=False)  # PASS | FAILED
+    processing_status: Mapped[str] = mapped_column(String, index=True, nullable=False)  # PROCESSING | PASS | FAILED
     overall_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     file_type: Mapped[str] = mapped_column(String, nullable=True)

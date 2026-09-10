@@ -3,7 +3,7 @@ REST API routes for document processing, retrieval and dashboard listing.
 """
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -21,7 +21,7 @@ from app.schemas.document import (
     ProcessingMetadata,
     ValidationResult,
 )
-from app.services.document_service import process_document
+from app.services.document_service import process_document_in_background, queue_document
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -35,13 +35,20 @@ def health_check() -> HealthResponse:
 
 @router.post("/documents/process", response_model=DocumentProcessResponse, tags=["documents"])
 async def process_document_endpoint(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     document_type: DocumentType = Form(...),
     db: Session = Depends(get_db),
 ) -> DocumentProcessResponse:
     raw = await file.read()
     logger.info("Received upload filename=%s document_type=%s", file.filename, document_type.value)
-    return process_document(db, document_name=file.filename or "unnamed_document", document_type=document_type.value, raw=raw)
+    response = queue_document(db, document_name=file.filename or "unnamed_document", document_type=document_type.value, raw=raw)
+    if response.processing_status == "PROCESSING":
+        background_tasks.add_task(
+            process_document_in_background, response.document_id, response.document_name,
+            response.document_type, raw,
+        )
+    return response
 
 
 @router.get("/documents/{document_name}", response_model=DocumentProcessResponse, tags=["documents"])

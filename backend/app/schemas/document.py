@@ -81,7 +81,7 @@ class DocumentProcessResponse(BaseModel):
     document_id: str
     document_name: str
     document_type: str
-    processing_status: Literal["PASS", "FAILED"]
+    processing_status: Literal["PROCESSING", "PASS", "FAILED"]
     overall_confidence: float | None = None
     file_validation: FileValidationResult
     extracted_data: dict[str, Any] = Field(default_factory=dict)
@@ -94,7 +94,7 @@ class DocumentListItem(BaseModel):
     document_id: str
     document_name: str
     document_type: str
-    processing_status: str
+    processing_status: Literal["PROCESSING", "PASS", "FAILED"]
     overall_confidence: float | None = None
     processed_at: datetime
 

@@ -57,7 +57,7 @@ def test_process_then_get_by_name_and_list(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["document_name"] == "sample_invoice.png"
-    assert body["processing_status"] in ("PASS", "FAILED")
+    assert body["processing_status"] in ("PROCESSING", "PASS", "FAILED")
 
     get_resp = client.get("/api/v1/documents/sample_invoice.png")
     assert get_resp.status_code == 200

@@ -36,6 +36,22 @@ def get_latest_by_name(db: Session, document_name: str) -> ProcessedDocument:
     return record
 
 
+def get_by_id(db: Session, document_id: str) -> ProcessedDocument | None:
+    return db.query(ProcessedDocument).filter(ProcessedDocument.id == document_id).first()
+
+
+def update(db: Session, record: ProcessedDocument) -> ProcessedDocument:
+    try:
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        return record
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Failed to update processed document: %s", exc)
+        raise DatabaseError("Failed to store the processed document result.") from exc
+
+
 def list_all(db: Session, limit: int = 200) -> list[ProcessedDocument]:
     return (
         db.query(ProcessedDocument)

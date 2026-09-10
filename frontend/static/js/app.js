@@ -144,7 +144,9 @@ els.form.addEventListener("submit", async (e) => {
     if (!res.ok) {
       throw new Error(body?.error?.message || `Request failed (${res.status})`);
     }
-    if (body.processing_status === "FAILED") {
+    if (body.processing_status === "PROCESSING") {
+      setStatus(`Queued — processing "${body.document_name}" in the background.`, "busy");
+    } else if (body.processing_status === "FAILED") {
       setStatus(`Processed with status FAILED: ${body.error ? body.error.message : "see details in the ledger."}`, "error");
     } else {
       setStatus(`Done — "${body.document_name}" processed successfully.`, "ok");
@@ -234,6 +236,9 @@ function openDetailFromResponse(doc) {
 
   switchTab("fields");
   els.overlay.hidden = false;
+  if (doc.processing_status === "PROCESSING") {
+    setTimeout(() => openDetail(doc.document_name), 2500);
+  }
 }
 
 function renderFieldCard(key, field) {
