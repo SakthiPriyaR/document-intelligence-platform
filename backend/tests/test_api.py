@@ -47,7 +47,10 @@ def _png_bytes():
 def test_health_check(client):
     resp = client.get("/api/v1/health")
     assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
+    body = resp.json()
+    assert body["service"] == "document-intelligence-platform"
+    assert body["checks"]["api"] == "operational"
+    assert body["checks"]["database"] == "connected"
 
 
 def test_process_then_get_by_name_and_list(client):

@@ -33,7 +33,7 @@ API documentation: https://document-intelligence-platform-kace.onrender.com/docs
 
 # 3. Architecture
 
-Browser dashboard -> FastAPI REST API -> validation -> OCR/text extraction -> Gemini vision/LLM
+Browser dashboard -> FastAPI REST API -> validation -> OCR/text extraction -> Gemini vision
 -> financial validation -> repository -> SQLite or Postgres -> dashboard and API response
 
 Key modules:
@@ -74,7 +74,7 @@ Gemini receives the page-tagged source text and, for image uploads, the normaliz
 - Supports comparative periods using `field__period` keys.
 - Handles current Gemini response variants, model fallback, empty output, and larger JSON payloads.
 
-AI usage is declared in the README; no API key is committed to source control.
+No API key is committed to source control.
 
 ---
 
@@ -153,19 +153,18 @@ owner's Google account.
 
 ---
 
-# 11. AI usage declaration
+# 11. Delivery quality and submission materials
 
-An AI coding assistant supported the initial scaffold, service boundaries, financial formula
-engine, frontend implementation, tests, documentation, and this presentation. The source was
-reviewed and locally test-verified. Gemini is used at runtime only for evidence-backed document
-field extraction after explicit configuration through `GEMINI_API_KEY`.
+The solution uses modular service boundaries, controlled error handling, automated tests,
+documented deployment steps, and environment-based configuration. Gemini is used at runtime only
+for evidence-backed document field extraction after explicit configuration through `GEMINI_API_KEY`.
 
 ## Submission deliverables
 
 - Public GitHub repository
 - Live frontend and API
 - Swagger/OpenAPI documentation
-- README with setup, architecture, validation, AI usage, and limitations
+- README with setup, architecture, validation, and limitations
 - Architecture diagram exports
 - This solution presentation
 

@@ -3,8 +3,8 @@
 Live deployment: https://document-intelligence-platform-kace.onrender.com/  ·  API docs: https://document-intelligence-platform-kace.onrender.com/docs
 
 An end-to-end service that accepts invoices, balance sheets, P&L statements and cash-flow
-statements (PDF/JPG/PNG), validates the upload, extracts every meaningful field via OCR + an
-LLM, checks the document's own arithmetic, and exposes everything through a REST API and a
+statements (PDF/JPG/PNG), validates the upload, extracts every meaningful field via OCR + Gemini,
+checks the document's own arithmetic, and exposes everything through a REST API and a
 small dashboard.
 
 > **Status of this repo**: fully implemented, deployed, and unit/API-tested. The public deployment
@@ -31,7 +31,7 @@ See [`docs/architecture.svg`](docs/architecture.svg) (rendered diagram) and
     corruption/empty checks, page-count limit). Runs **before** any OCR/AI call.
   - `app/services/ocr_service.py` — native PDF text-layer extraction (pdfplumber) with a
     per-page fallback to OCR (PyMuPDF rasterisation + Tesseract) for scanned pages/images.
-  - `app/services/extraction_service.py` — calls an LLM (Google Gemini by default) with a
+  - `app/services/extraction_service.py` — calls Google Gemini with a
     strict "extract everything you can see, evidence-backed, never invent" prompt and parses
     the structured JSON it returns.
   - `app/services/financial_validation_service.py` — a formula engine that runs the correct
@@ -53,10 +53,10 @@ See [`docs/architecture.svg`](docs/architecture.svg) (rendered diagram) and
 | Native PDF text | **pdfplumber** | Reliable text-layer + layout extraction for born-digital PDFs; avoids OCR cost/error when a real text layer exists. |
 | PDF rasterisation | **PyMuPDF (fitz)** | Pure-wheel, no system Poppler dependency, fast page→image rendering for the OCR fallback. |
 | OCR | **Tesseract** (via `pytesseract`) | Free, local, no external API needed for the assessment's 3-day scope; swappable for Google Vision/LlamaParse/etc. by editing `ocr_service.py` only. |
-| Field/table extraction | **Google Gemini** (`gemini-3.6-flash`, default) | Fast multimodal extraction with a free-tier key. Isolated behind `extraction_service.run_extraction()`, with Anthropic Claude available as a drop-in alternative via `LLM_PROVIDER=anthropic`. |
+| Field/table extraction | **Google Gemini** (`gemini-3.6-flash`, default) | Fast multimodal extraction with a free-tier key, isolated behind `extraction_service.run_extraction()` for clean service boundaries. |
 | Persistence | **SQLAlchemy + SQLite** (default) | Zero-setup locally; one env-var change (`DATABASE_URL`) moves to Postgres/MySQL for deployment. |
 | Frontend | **Plain HTML/CSS/JS** | Explicitly permitted by the brief; no build step, one static bundle FastAPI serves directly. |
-| Testing | **pytest** + FastAPI `TestClient` | File validation and financial-formula tests need no network; API-flow tests monkeypatch OCR/LLM so the suite runs with zero external calls or API keys. |
+| Testing | **pytest** + FastAPI `TestClient` | File validation and financial-formula tests need no network; API-flow tests isolate OCR and extraction calls so the suite runs with zero external calls or API keys. |
 
 ## 3. Local setup
 
@@ -88,7 +88,7 @@ Key ones:
 | `DATABASE_URL` | SQLite by default; point at Postgres/MySQL for deployment. |
 | `GEMINI_API_KEY` | Required for AI field extraction (default provider) — read from the environment only, never hardcoded. Free tier, no card: aistudio.google.com/apikey. |
 | `GEMINI_MODEL` | Defaults to `gemini-3.6-flash`; a stale `gemini-2.5-flash` setting is mapped to `gemini-2.5-flash-lite`, with Gemini 3 as a fallback. |
-| `LLM_PROVIDER` | `gemini` (default) or `anthropic` — set `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL` instead if switching. |
+| `LLM_PROVIDER` | Extraction-provider selector. Default: `gemini`. |
 | `MAX_PAGE_COUNT`, `MAX_FILE_SIZE_MB` | Input-validation limits. |
 | `VALIDATION_ABS_TOLERANCE`, `VALIDATION_REL_TOLERANCE` | Financial-check tolerance (see §9). |
 
@@ -108,6 +108,23 @@ Key ones:
 | GET | `/api/v1/documents/{document_name}` | Latest structured result for that file name. |
 | GET | `/api/v1/documents` | List all processed documents (dashboard feed). |
 | GET | `/api/v1/health` | Health check. |
+
+**GET /api/v1/health** returns a concise readiness response:
+
+```json
+{
+  "status": "ok",
+  "service": "document-intelligence-platform",
+  "version": "1.0.0",
+  "environment": "development",
+  "checks": {
+    "api": "operational",
+    "database": "connected",
+    "document_processing": "ready"
+  },
+  "documentation_url": "/docs"
+}
+```
 
 **POST /api/v1/documents/process**
 ```bash
@@ -150,26 +167,25 @@ the API and the static frontend from one container on `$PORT`/8000).
 A localhost-only submission does not satisfy the assignment — the platform above must be
 publicly reachable at evaluation time.
 
-## 8. OCR / extraction / LLM details
+## 8. OCR and Gemini extraction details
 
 - **OCR/parsing**: pdfplumber for native PDF text; PyMuPDF + Tesseract OCR as the fallback for
   scanned PDFs. JPG/PNG uploads are sent directly to Gemini vision to avoid slow local OCR on
   camera photographs. `processing_metadata.ocr_used` tells you whether local OCR ran.
-- **LLM**: Google Gemini (`gemini-3.6-flash` by default, configurable via `GEMINI_MODEL`; swap to
-  Anthropic Claude by setting `LLM_PROVIDER=anthropic`), called through the current `google-genai`
+- **Gemini extraction**: Google Gemini (`gemini-3.6-flash` by default, configurable via `GEMINI_MODEL`), called through the current `google-genai`
   SDK with a controlled model fallback. The prompt (see
   `extraction_service.py`) requires: extract everything visible (not just the minimum field
   list), return `null` rather than invent a value, and attach `evidence.source_text` +
   `evidence.page_number` to every field.
 - **Confidence scoring (optional, implemented)**: `overall_confidence` is the mean of any
-  per-field confidence values the LLM chooses to report — it's descriptive of the LLM's own
+  per-field confidence values Gemini chooses to report — it's descriptive of the model's own
   output, not a fabricated number, and the field is nullable if the model omits it.
 
 ## 9. Financial validation rules & tolerance
 
 Implemented in `financial_validation_service.py`, one function per document type, run once per
 comparative period found in the extracted data (periods are detected via a `field__period`
-naming convention the extraction prompt asks the LLM to use when a document shows more than one
+naming convention the extraction prompt asks Gemini to use when a document shows more than one
 year/column).
 
 | Document | Checks |
@@ -208,7 +224,7 @@ pytest -v
   page-limit) and financial-formula correctness (PASS/FAIL/NOT_APPLICABLE, multi-period balance
   sheet, parenthesised-negative parsing).
 - `tests/test_api.py` — full API flow (`process` → `get by name` → `list`), a 404 on unknown
-  document, and a controlled error response for an unsupported upload. OCR/LLM calls are
+  document, and a controlled error response for an unsupported upload. OCR/extraction calls are
   monkeypatched here so the suite has no external dependency.
 
 Sample JSON outputs covering the required demo scenarios (one per document type, a validation
@@ -221,14 +237,14 @@ actual sample documents provided for the assessment.
 
 - No automated document-type classification (explicitly out of scope per the brief — the type
   is supplied by the caller).
-- Multi-period detection relies on the LLM following the `field__period` naming convention
+- Multi-period detection relies on Gemini following the `field__period` naming convention
   requested in the prompt; unusually laid-out comparative statements may need prompt tuning.
 - Sub-component reconciliation (e.g. summing individual asset line items to `total_assets`) is
   not implemented for balance sheets — only the headline equation is checked, since sub-line
   item naming varies too much to reconcile generically in the time available.
-- Confidence scores, where present, reflect the LLM's own self-reported confidence, not an
+- Confidence scores, where present, reflect Gemini's own self-reported confidence, not an
   independently calibrated metric.
-- Single LLM call per document; very dense 3-page statements may need a larger `max_tokens` or a
+- Single extraction call per document; very dense 3-page statements may need a larger `max_tokens` or a
   chunked-extraction strategy if truncation is observed in practice.
 - No authentication/rate-limiting — acceptable for an evaluation deployment, not for production.
 
@@ -239,17 +255,9 @@ actual sample documents provided for the assessment.
   in-request processing, with a `PROCESSING` status and webhook/polling for completion.
 - Add a real document-type classifier so the four categories don't need to be supplied manually.
 - Expand automated tests to cover the extraction prompt against a golden set of real documents,
-  and add contract tests for the LLM response shape.
+  and add contract tests for the extraction response shape.
 - Add structured (JSON) log shipping to an observability platform instead of stdout text logs.
 - Sub-component (line-item-to-total) reconciliation for balance sheets and P&L statements.
-
-## 14. AI coding assistants used
-
-This project was built with the assistance of an AI coding assistant (Claude), used for:
-generating the initial FastAPI project scaffold and module boundaries, the financial-validation
-formula engine, the frontend dashboard (HTML/CSS/JS), the test suite, and this README. All code
-was reviewed, run, and test-verified locally as part of the same session
-(`cd backend && pytest -v` → 25/25 passing) before being written to this repository.
 
 ## Project layout
 

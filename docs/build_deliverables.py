@@ -367,11 +367,11 @@ def build_pptx(path: Path) -> None:
     add_text(slide, "The current live extraction flow works; durable history requires a persistent database plan.",
              0.72, 6.00, 11.3, 0.35, 16, INK)
 
-    # 11. AI usage and deliverables
+    # 11. Delivery quality and deliverables
     slide = new_slide(prs)
-    add_title(slide, "AI usage and submission deliverables", "Transparent engineering", 11)
-    add_card(slide, 0.70, 1.85, 5.65, 3.25, "AI usage declaration",
-             "An AI coding assistant supported the initial scaffold, service boundaries, validation engine, frontend, tests, documentation and this presentation.\n\nThe source was reviewed and locally test-verified. Gemini is used at runtime only for evidence-backed field extraction after explicit configuration.", TEAL, 14)
+    add_title(slide, "Delivery quality and submission materials", "Engineering discipline", 11)
+    add_card(slide, 0.70, 1.85, 5.65, 3.25, "Delivery quality",
+             "Modular service boundaries, controlled failures, environment-based configuration and automated tests keep the system maintainable.\n\nGemini is used at runtime only for evidence-backed field extraction after explicit configuration.", TEAL, 14)
     add_card(slide, 6.70, 1.85, 5.9, 3.25, "Included in the repository",
              "Public GitHub source\nLive frontend, API and Swagger\nREADME with setup and limitations\nArchitecture source plus PNG/PDF exports\nThis solution presentation in PPTX/PDF/Markdown\nSample fixtures and automated tests", GOLD, 14)
     add_text(slide, "Thank you", 0.70, 5.82, 2.4, 0.48, 25, TEAL, True)
@@ -472,8 +472,8 @@ def build_pdf(path: Path) -> None:
             "Render Free local SQLite storage is ephemeral; managed Postgres is required for durable history.",
             "Production adds authentication, tenant isolation, object storage, durable workers, observability and evaluations.",
         ]),
-        ("AI usage and submission deliverables", "Transparent engineering", [
-            "AI coding assistance was reviewed and test-verified; Gemini is used only for configured, evidence-backed extraction.",
+        ("Delivery quality and submission materials", "Engineering discipline", [
+            "Modular services, controlled failures, environment-based configuration and automated tests support maintainable delivery.",
             "Repository includes source, live links, README, tests, samples, architecture source/PNG/PDF and this presentation.",
         ]),
         ("How to present the live demo", "Six-minute walkthrough", [

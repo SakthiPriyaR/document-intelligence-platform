@@ -4,6 +4,7 @@ REST API routes for document processing, retrieval and dashboard listing.
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -28,13 +29,30 @@ router = APIRouter()
 
 
 @router.get("/health", response_model=HealthResponse, tags=["health"])
-def health_check() -> HealthResponse:
+def health_check(db: Session = Depends(get_db)) -> HealthResponse:
+    """Return a concise readiness response without exposing provider configuration."""
     settings = get_settings()
-    configured = bool(settings.GEMINI_API_KEY if settings.LLM_PROVIDER == "gemini" else settings.ANTHROPIC_API_KEY)
+    database_status = "connected"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:  # pragma: no cover - depends on deployment infrastructure
+        logger.exception("Health check database probe failed")
+        database_status = "unavailable"
+
+    processing_ready = bool(
+        settings.GEMINI_API_KEY if settings.LLM_PROVIDER == "gemini" else settings.ANTHROPIC_API_KEY
+    )
+    status = "ok" if database_status == "connected" and processing_ready else "degraded"
     return HealthResponse(
-        app_name=settings.APP_NAME, environment=settings.ENVIRONMENT,
-        timestamp=datetime.now(timezone.utc), llm_provider=settings.LLM_PROVIDER,
-        llm_configured=configured,
+        status=status,
+        service="document-intelligence-platform",
+        environment=settings.ENVIRONMENT,
+        timestamp=datetime.now(timezone.utc),
+        checks={
+            "api": "operational",
+            "database": database_status,
+            "document_processing": "ready" if processing_ready else "configuration_required",
+        },
     )
 
 

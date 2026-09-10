@@ -105,9 +105,10 @@ class DocumentListResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    status: Literal["ok"] = "ok"
-    app_name: str
+    status: Literal["ok", "degraded"] = "ok"
+    service: str
+    version: str = "1.0.0"
     environment: str
     timestamp: datetime
-    llm_provider: str | None = None
-    llm_configured: bool = False
+    checks: dict[str, str]
+    documentation_url: str = "/docs"
