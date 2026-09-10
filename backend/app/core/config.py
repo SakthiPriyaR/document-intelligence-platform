@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     UPLOAD_TMP_DIR: str = "/tmp/doc_intel_uploads"
 
     # Database
+    # Free Render services do not support persistent disks; use managed Postgres for durable data.
     DATABASE_URL: str = "sqlite:///./document_intelligence.db"
 
     # OCR

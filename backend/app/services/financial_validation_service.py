@@ -194,12 +194,18 @@ def _validate_invoice(extracted_data: dict) -> list[ValidationCheck]:
     total_amount = _lookup(values, "total_amount")
 
     if subtotal is not None and tax_amount is not None:
-        calc = subtotal + tax_amount - discount
-        checks.append(_compare(
-            "invoice_total_check", "subtotal + tax_amount - discount",
+        candidates = [
+            ("tax-exclusive", "subtotal + tax_amount - discount", subtotal + tax_amount - discount),
+            ("tax-inclusive", "subtotal - discount", subtotal - discount),
+        ]
+        mode, formula, calc = min(candidates, key=lambda item: abs(item[2] - total_amount) if total_amount is not None else float("inf"))
+        check = _compare(
+            "invoice_total_check", formula,
             {"subtotal": subtotal, "tax_amount": tax_amount, "discount": discount},
             calc, total_amount, None,
-        ))
+        )
+        check.message = f"Compared using {mode} total mode."
+        checks.append(check)
     else:
         checks.append(_not_applicable(
             "invoice_total_check", "subtotal + tax_amount - discount", None,

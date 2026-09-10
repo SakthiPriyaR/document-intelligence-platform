@@ -1,0 +1,5 @@
+services:
+  - type: web
+    name: document-intelligence-platform
+    env: docker
+    dockerfilePath: ./backend/Dockerfile

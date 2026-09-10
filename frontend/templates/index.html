@@ -57,6 +57,13 @@
       <button id="refreshBtn" class="btn btn--ghost">Refresh</button>
     </div>
 
+    <div class="dashboard-stats" id="dashboardStats" aria-label="Dashboard summary"></div>
+    <div class="ledger__filters">
+      <input id="searchInput" type="text" placeholder="Search documents..." aria-label="Search documents" />
+      <select id="statusFilter" aria-label="Filter by status"><option value="">All statuses</option><option>PASS</option><option>FAILED</option></select>
+      <select id="typeFilter" aria-label="Filter by type"><option value="">All types</option></select>
+    </div>
+
     <table class="ledger__table" id="ledgerTable">
       <thead>
         <tr>

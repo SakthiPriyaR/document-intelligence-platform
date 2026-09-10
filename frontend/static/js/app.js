@@ -23,6 +23,10 @@ const els = {
   validationSummary: document.getElementById("validationSummary"),
   checksBody: document.getElementById("checksBody"),
   rawJson: document.getElementById("rawJson"),
+  stats: document.getElementById("dashboardStats"),
+  searchInput: document.getElementById("searchInput"),
+  statusFilter: document.getElementById("statusFilter"),
+  typeFilter: document.getElementById("typeFilter"),
   tabs: document.querySelectorAll(".detail__tab"),
   panes: {
     fields: document.getElementById("tabFields"),
@@ -37,6 +41,7 @@ const DOC_TYPE_LABELS = {
   profit_and_loss: "Profit & loss",
   cash_flow_statement: "Cash flow statement",
 };
+let allDocuments = [];
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -60,7 +65,10 @@ async function loadDocuments() {
     const res = await fetch(`${API_BASE}/documents`);
     if (!res.ok) throw new Error(`Failed to load documents (${res.status})`);
     const data = await res.json();
-    renderLedger(data.documents || []);
+    allDocuments = data.documents || [];
+    renderStats(allDocuments);
+    renderTypeFilter(allDocuments);
+    renderLedger(filteredDocuments());
   } catch (err) {
     els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="5">Could not load documents: ${escapeHtml(err.message)}</td></tr>`;
   }
@@ -84,6 +92,29 @@ function renderLedger(documents) {
   els.ledgerBody.querySelectorAll("tr[data-name]").forEach((row) => {
     row.addEventListener("click", () => openDetail(row.getAttribute("data-name")));
   });
+}
+
+function filteredDocuments() {
+  const query = (els.searchInput.value || "").toLowerCase().trim();
+  return allDocuments.filter((doc) =>
+    (!query || doc.document_name.toLowerCase().includes(query)) &&
+    (!els.statusFilter.value || doc.processing_status === els.statusFilter.value) &&
+    (!els.typeFilter.value || doc.document_type === els.typeFilter.value)
+  );
+}
+
+function renderStats(documents) {
+  const processed = documents.length;
+  const passed = documents.filter((d) => d.processing_status === "PASS").length;
+  const confidences = documents.map((d) => d.overall_confidence).filter((v) => v != null);
+  const average = confidences.length ? `${(confidences.reduce((a, b) => a + b, 0) / confidences.length * 100).toFixed(0)}%` : "—";
+  els.stats.innerHTML = [["Processed", processed], ["Pass rate", processed ? `${Math.round(passed / processed * 100)}%` : "—"], ["Avg confidence", average]].map(([label, value]) => `<div class="stat-card"><span>${label}</span><strong>${value}</strong></div>`).join("");
+}
+
+function renderTypeFilter(documents) {
+  const selected = els.typeFilter.value;
+  els.typeFilter.innerHTML = `<option value="">All types</option>` + [...new Set(documents.map((d) => d.document_type))].map((type) => `<option value="${escapeAttr(type)}">${escapeHtml(DOC_TYPE_LABELS[type] || type)}</option>`).join("");
+  els.typeFilter.value = selected;
 }
 
 /* ---------------- Upload / process ---------------- */
@@ -139,6 +170,7 @@ els.fileInput.addEventListener("change", () => {
 });
 
 els.refreshBtn.addEventListener("click", loadDocuments);
+[els.searchInput, els.statusFilter, els.typeFilter].forEach((control) => control.addEventListener("input", () => renderLedger(filteredDocuments())));
 
 /* ---------------- Detail panel ---------------- */
 
@@ -197,11 +229,14 @@ function openDetailFromResponse(doc) {
 function renderFieldCard(key, field) {
   const value = field && typeof field === "object" ? field.value : field;
   const evidence = field && typeof field === "object" ? field.evidence : null;
+  const confidence = field && typeof field === "object" ? field.confidence : null;
   const isMissing = value === null || value === undefined || value === "";
+  const isLowConfidence = !isMissing && confidence != null && Number(confidence) < 0.6;
   return `
-    <div class="field-card ${isMissing ? "is-missing" : ""}">
+    <div class="field-card ${isMissing ? "is-missing" : ""} ${isLowConfidence ? "is-low-confidence" : ""}">
       <div class="field-card__label">${escapeHtml(prettifyKey(key))}</div>
       <div class="field-card__value ${isMissing ? "is-null" : ""}">${isMissing ? "Not found" : escapeHtml(String(value))}</div>
+      ${isLowConfidence ? `<div class="field-card__confidence">Low confidence: ${(Number(confidence) * 100).toFixed(0)}%</div>` : ""}
       ${evidence && evidence.source_text ? `<div class="field-card__evidence">p.${evidence.page_number ?? "?"} — “${escapeHtml(evidence.source_text)}”</div>` : ""}
     </div>`;
 }

@@ -95,6 +95,18 @@ def test_invoice_total_check_fail():
     assert result.overall_status == "FAIL"
 
 
+def test_invoice_tax_inclusive_total_uses_smaller_variance():
+    extracted = {
+        "subtotal": _field(12500.00), "tax_amount": _field(625.00),
+        "discount": _field(0.00), "total_amount": _field(12500.00),
+    }
+    result = run_financial_validation("invoice", extracted)
+    check = next(c for c in result.checks if c.name == "invoice_total_check")
+    assert check.status == "PASS"
+    assert check.formula == "subtotal - discount"
+    assert "tax-inclusive" in check.message
+
+
 def test_invoice_missing_fields_not_applicable():
     extracted = {"total_amount": _field(13125.00)}
     result = run_financial_validation("invoice", extracted)

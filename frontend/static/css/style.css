@@ -146,6 +146,12 @@ select, input[type="text"] {
   gap: 12px;
   margin-bottom: 14px;
 }
+.dashboard-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.stat-card { background: var(--paper-raised); border: 1px solid var(--line); padding: 12px 14px; }
+.stat-card span { display: block; color: var(--ink-soft); font-size: .75rem; }
+.stat-card strong { font: 1.25rem var(--font-mono); }
+.ledger__filters { display: flex; gap: 8px; margin-bottom: 12px; }
+.ledger__filters input, .ledger__filters select { flex: 1; min-width: 0; }
 
 .ledger__table {
   width: 100%;
@@ -246,6 +252,8 @@ select, input[type="text"] {
 }
 .field-card { background: var(--paper-raised); padding: 12px 14px; }
 .field-card.is-missing { background: #FBF7EF; }
+.field-card.is-low-confidence { border-left: 3px solid #B98228; background: #FFFBF1; }
+.field-card__confidence { color: #9A681D; font: 0.72rem var(--font-mono); margin-top: 7px; }
 .field-card__label { font-size: 0.76rem; color: var(--ink-soft); margin-bottom: 4px; word-break: break-word; }
 .field-card__value { font-family: var(--font-mono); font-size: 0.95rem; word-break: break-word; }
 .field-card__value.is-null { color: var(--na); font-style: italic; }
@@ -273,6 +281,8 @@ select, input[type="text"] {
 }
 
 @media (max-width: 640px) {
+  .dashboard-stats { grid-template-columns: 1fr; }
+  .ledger__filters { flex-direction: column; }
   .ledger__table thead { display: none; }
   .ledger__table tr { display: block; border-bottom: 1px solid var(--line); }
   .ledger__table td { display: flex; justify-content: space-between; border-bottom: none; padding: 6px 14px; }

@@ -1,5 +1,7 @@
 # Document Intelligence Platform
 
+Live deployment: https://document-intelligence-platform-kace.onrender.com/  ·  API docs: https://document-intelligence-platform-kace.onrender.com/docs
+
 An end-to-end service that accepts invoices, balance sheets, P&L statements and cash-flow
 statements (PDF/JPG/PNG), validates the upload, extracts every meaningful field via OCR + an
 LLM, checks the document's own arithmetic, and exposes everything through a REST API and a
@@ -90,13 +92,11 @@ Key ones:
 
 ## 5. Deployed URLs
 
-*(fill in after deploying — see §7)*
-
-- Frontend: `TODO`
-- Backend API base: `TODO`
-- Swagger/OpenAPI: `TODO/docs`
-- Health check: `TODO/api/v1/health`
-- Public GitHub repo: `TODO`
+- Frontend: https://document-intelligence-platform-kace.onrender.com/
+- Backend API base: https://document-intelligence-platform-kace.onrender.com/api/v1
+- Swagger/OpenAPI: https://document-intelligence-platform-kace.onrender.com/docs
+- Health check: https://document-intelligence-platform-kace.onrender.com/api/v1/health
+- Public GitHub repo: https://github.com/SakthiPriyaR/document-intelligence-platform
 
 ## 6. API reference
 
@@ -138,9 +138,9 @@ the API and the static frontend from one container on `$PORT`/8000).
 1. Push this repo to a **public** GitHub repository.
 2. On your platform, create a new **Web Service** from the repo, build context = repo root,
    Dockerfile = `backend/Dockerfile`.
-3. Set environment variables from `.env.example` (at minimum `GEMINI_API_KEY`; set
-   `DATABASE_URL` to a managed Postgres URL if you don't want to rely on the container's
-   ephemeral filesystem for SQLite).
+3. Set environment variables from `.env.example` (at minimum `GEMINI_API_KEY`). The included
+   Render Free does not support persistent disks, so the default SQLite file is ephemeral there.
+   For durable deployment data, configure `DATABASE_URL` with a managed Postgres URL.
 4. Deploy. Confirm `/api/v1/health` returns `200`, then confirm `/` (frontend) and `/docs`
    (Swagger) both load.
 5. Record the resulting URLs in §5 above.
@@ -190,8 +190,8 @@ columns so the schema stays stable across very different document types, while `
 Re-processing the same `document_name` inserts a new row; `GET /documents/{name}` always returns
 the most recent one, per the spec (prior versions are kept, just not surfaced by that endpoint).
 
-Default: local SQLite file (`document_intelligence.db`), zero setup. Swap `DATABASE_URL` for a
-Postgres/MySQL connection string in production — no code changes required.
+The free Render deployment uses a relative SQLite file and may lose data after restarts or
+redeploys. For anything beyond a demo, use managed Postgres/MySQL.
 
 ## 11. Testing
 
