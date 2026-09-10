@@ -47,7 +47,7 @@
 
     <rect x="580" y="260" width="230" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
     <text x="598" y="288" font-size="13" font-weight="600" fill="#1B2430">3. AI Field Extraction</text>
-    <text x="598" y="306" font-size="11.5" fill="#5B6472">Anthropic Claude · structured JSON</text>
+    <text x="598" y="306" font-size="11.5" fill="#5B6472">Google Gemini vision · structured JSON</text>
     <text x="598" y="322" font-size="11.5" fill="#5B6472">extraction_service.py</text>
 
     <rect x="850" y="260" width="270" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>

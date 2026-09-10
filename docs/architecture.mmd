@@ -6,7 +6,7 @@ flowchart TD
     A --> V[Document Validation Service<br/>type, integrity, page limit]
     V -->|reject| E[Controlled error response]
     V -->|pass| O[OCR / Text Extraction Service<br/>pdfplumber native text + PyMuPDF/Tesseract fallback]
-    O --> X[LLM Extraction Service<br/>Anthropic Claude, structured JSON + evidence]
+    O --> X[LLM Extraction Service<br/>Google Gemini vision, structured JSON + evidence]
     X --> F[Financial Validation Service<br/>per document-type formulas, tolerance-based]
     F --> P[(SQLite / Postgres<br/>ProcessedDocument table)]
     P --> A
