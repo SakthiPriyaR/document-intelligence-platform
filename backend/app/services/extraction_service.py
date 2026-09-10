@@ -120,6 +120,38 @@ def _parse_json_response(raw_response: str) -> dict:
     raise ExtractionError("The AI extraction service returned an unparseable response.")
 
 
+def _response_text(response) -> str:
+    """Return visible model text across SDK response variants."""
+    try:
+        parsed = getattr(response, "parsed", None)
+    except Exception:
+        parsed = None
+    if parsed is not None:
+        if hasattr(parsed, "model_dump"):
+            parsed = parsed.model_dump()
+        return json.dumps(parsed)
+
+    try:
+        text = getattr(response, "text", None)
+    except Exception:
+        text = None
+    if text:
+        return text
+
+    # Some multimodal responses expose text only through candidate parts.
+    visible_parts = []
+    all_parts = []
+    for candidate in getattr(response, "candidates", None) or []:
+        content = getattr(candidate, "content", None)
+        for part in getattr(content, "parts", None) or []:
+            part_text = getattr(part, "text", None)
+            if part_text:
+                all_parts.append(part_text)
+                if not getattr(part, "thought", False):
+                    visible_parts.append(part_text)
+    return "\n".join(visible_parts or all_parts)
+
+
 def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None = None) -> str:
     """Call Gemini using Google's current ``google-genai`` SDK.
 
@@ -157,11 +189,19 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
     last_exc: Exception | None = None
     for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
         try:
+            config_kwargs = {
+                "system_instruction": system_prompt,
+                "temperature": 0,
+                "response_mime_type": "application/json",
+                "max_output_tokens": 4000,
+            }
+            # Gemini 3 models can spend the entire small output budget on
+            # hidden reasoning before producing the JSON answer. Minimal
+            # thinking keeps extraction fast and leaves room for the result.
+            if active_model.startswith("gemini-3"):
+                config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="minimal")
             config = types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0,
-                response_mime_type="application/json",
-                max_output_tokens=4000,
+                **config_kwargs,
             )
             if image_bytes:
                 image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
@@ -176,7 +216,7 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
                     contents=user_prompt,
                     config=config,
                 )
-            return getattr(response, "text", "") or ""
+            return _response_text(response)
         except Exception as exc:  # network / rate-limit / API errors
             last_exc = exc
             logger.warning("LLM call attempt %d failed: %s", attempt, exc)

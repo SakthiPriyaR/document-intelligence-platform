@@ -46,6 +46,7 @@ def test_call_gemini_uses_current_sdk_for_image(monkeypatch):
     fake_types.Part = FakePart
     fake_types.GenerateContentConfig = FakeConfig
     fake_types.HttpOptions = lambda **kwargs: kwargs
+    fake_types.ThinkingConfig = FakeConfig
 
     fake_genai = ModuleType("google.genai")
     fake_genai.types = fake_types
@@ -98,6 +99,7 @@ def test_call_gemini_falls_back_on_temporary_model_error(monkeypatch):
     fake_types.Part = FakePart
     fake_types.GenerateContentConfig = FakeConfig
     fake_types.HttpOptions = lambda **kwargs: kwargs
+    fake_types.ThinkingConfig = FakeConfig
 
     fake_genai = ModuleType("google.genai")
     fake_genai.types = fake_types
