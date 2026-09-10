@@ -122,6 +122,16 @@ def _parse_json_response(raw_response: str) -> dict:
 
 def _response_text(response) -> str:
     """Return visible model text across SDK response variants."""
+    # ``output_text`` is exposed by the newer Interactions-style response
+    # object. Keep this first so the extractor remains compatible if the SDK
+    # returns that shape for a current Gemini model.
+    try:
+        output_text = getattr(response, "output_text", None)
+    except Exception:
+        output_text = None
+    if output_text:
+        return output_text
+
     try:
         parsed = getattr(response, "parsed", None)
     except Exception:
@@ -152,6 +162,27 @@ def _response_text(response) -> str:
     return "\n".join(visible_parts or all_parts)
 
 
+def _gemini_model_candidates(configured_model: str) -> list[str]:
+    """Return an ordered list of models that are valid for new API users.
+
+    ``gemini-2.5-flash`` is still present in some existing Render settings,
+    but the live API can reject it for new users. Prefer its lightweight
+    successor, then use the current Gemini 3 fallback. Keeping this mapping
+    in code means a stale dashboard variable cannot send every upload down a
+    dead model path.
+    """
+    configured = (configured_model or "").strip() or "gemini-3.6-flash"
+    if configured == "gemini-2.5-flash":
+        ordered = ["gemini-2.5-flash-lite", "gemini-3.6-flash"]
+    elif configured == "gemini-2.5-flash-lite":
+        ordered = ["gemini-2.5-flash-lite", "gemini-3.6-flash"]
+    elif configured == "gemini-3.6-flash":
+        ordered = ["gemini-3.6-flash", "gemini-2.5-flash-lite"]
+    else:
+        ordered = [configured, "gemini-3.6-flash"]
+    return list(dict.fromkeys(ordered))
+
+
 def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None = None) -> str:
     """Call Gemini using Google's current ``google-genai`` SDK.
 
@@ -177,14 +208,7 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
             timeout=settings.LLM_REQUEST_TIMEOUT_SECONDS * 1000,
         ),
     )
-    active_model = settings.GEMINI_MODEL
-    if active_model == "gemini-2.5-flash":
-        # This model is the legacy value still present in some Render
-        # environments and can hang until the request timeout. Use the
-        # supported fallback immediately rather than spending 40 seconds on
-        # a model that has already failed for this deployment.
-        active_model = "gemini-3.6-flash"
-        logger.info("Replacing legacy Gemini model setting with model=%s", active_model)
+    model_candidates = _gemini_model_candidates(settings.GEMINI_MODEL)
 
     def _status_code(exc: Exception) -> int | None:
         code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
@@ -194,60 +218,61 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
         return int(match.group(1)) if match else None
 
     last_exc: Exception | None = None
-    for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
-        try:
-            config_kwargs = {
-                "system_instruction": system_prompt,
-                "temperature": 0,
-                "response_mime_type": "application/json",
-                "max_output_tokens": 4000,
-            }
-            # Gemini 3 models can spend the entire small output budget on
-            # hidden reasoning before producing the JSON answer. Minimal
-            # thinking keeps extraction fast and leaves room for the result.
-            if active_model.startswith("gemini-3"):
-                thinking_type = getattr(types, "ThinkingConfig", None)
-                thinking_fields = getattr(thinking_type, "model_fields", {})
-                if thinking_type and "thinking_level" in thinking_fields:
-                    config_kwargs["thinking_config"] = thinking_type(
-                        thinking_level="minimal"
+    for model_index, active_model in enumerate(model_candidates):
+        if model_index:
+            logger.info("Retrying Gemini extraction with fallback model=%s", active_model)
+        for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
+            try:
+                config_kwargs = {
+                    "system_instruction": system_prompt,
+                    "temperature": 0,
+                    "response_mime_type": "application/json",
+                    # An invoice with evidence for every visible field can
+                    # exceed 4,000 tokens. A larger budget prevents valid JSON
+                    # being cut off mid-object, which surfaced as an opaque
+                    # "unparseable response" error in production.
+                    "max_output_tokens": 8192,
+                }
+                # Keep Gemini 3 reasoning low-latency while reserving enough
+                # output space for the evidence-backed JSON payload.
+                if active_model.startswith("gemini-3"):
+                    thinking_type = getattr(types, "ThinkingConfig", None)
+                    thinking_fields = getattr(thinking_type, "model_fields", {})
+                    if thinking_type and "thinking_level" in thinking_fields:
+                        config_kwargs["thinking_config"] = thinking_type(
+                            thinking_level="low"
+                        )
+                    else:
+                        logger.info("Gemini SDK lacks thinking_level; using default thinking configuration")
+                config = types.GenerateContentConfig(**config_kwargs)
+                if image_bytes:
+                    image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+                    response = client.models.generate_content(
+                        model=active_model,
+                        contents=[user_prompt, image],
+                        config=config,
                     )
                 else:
-                    # Older google-genai releases do not know the Gemini 3
-                    # thinking_level field. Leave it unset rather than
-                    # sending a config that the installed SDK rejects.
-                    logger.info("Gemini SDK lacks thinking_level; using default thinking configuration")
-            config = types.GenerateContentConfig(
-                **config_kwargs,
-            )
-            if image_bytes:
-                image = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
-                response = client.models.generate_content(
-                    model=active_model,
-                    contents=[user_prompt, image],
-                    config=config,
+                    response = client.models.generate_content(
+                        model=active_model,
+                        contents=user_prompt,
+                        config=config,
+                    )
+                text = _response_text(response)
+                if text.strip():
+                    return text
+                raise RuntimeError("Gemini returned no text output")
+            except Exception as exc:  # network / rate-limit / API errors
+                last_exc = exc
+                logger.warning(
+                    "LLM call attempt %d failed model=%s: %s", attempt, active_model, exc
                 )
-            else:
-                response = client.models.generate_content(
-                    model=active_model,
-                    contents=user_prompt,
-                    config=config,
-                )
-            return _response_text(response)
-        except Exception as exc:  # network / rate-limit / API errors
-            last_exc = exc
-            logger.warning("LLM call attempt %d failed: %s", attempt, exc)
-            status_code = _status_code(exc)
-            if active_model != "gemini-3.6-flash" and status_code not in (400, 401, 403):
-                active_model = "gemini-3.6-flash"
-                logger.info(
-                    "Gemini model unavailable (status=%s); retrying with fallback model=%s",
-                    status_code,
-                    active_model,
-                )
-                continue
-            if status_code in (400, 401, 403):
-                break
+                status_code = _status_code(exc)
+                # A response with a concrete HTTP status is a model/API
+                # problem, so move to the next candidate immediately instead
+                # of spending another full timeout retrying the same model.
+                if status_code is not None:
+                    break
 
     detail = str(last_exc or "unknown error").replace(settings.GEMINI_API_KEY or "", "[redacted]")
     raise ExtractionError(f"The AI extraction service failed: {detail[:300]}") from last_exc

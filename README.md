@@ -87,7 +87,7 @@ Key ones:
 |---|---|
 | `DATABASE_URL` | SQLite by default; point at Postgres/MySQL for deployment. |
 | `GEMINI_API_KEY` | Required for AI field extraction (default provider) — read from the environment only, never hardcoded. Free tier, no card: aistudio.google.com/apikey. |
-| `GEMINI_MODEL` | Defaults to `gemini-3.6-flash`; the service falls back to it when an older configured model returns 404. |
+| `GEMINI_MODEL` | Defaults to `gemini-3.6-flash`; a stale `gemini-2.5-flash` setting is mapped to `gemini-2.5-flash-lite`, with Gemini 3 as a fallback. |
 | `LLM_PROVIDER` | `gemini` (default) or `anthropic` — set `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL` instead if switching. |
 | `MAX_PAGE_COUNT`, `MAX_FILE_SIZE_MB` | Input-validation limits. |
 | `VALIDATION_ABS_TOLERANCE`, `VALIDATION_REL_TOLERANCE` | Financial-check tolerance (see §9). |
@@ -203,7 +203,7 @@ cd backend
 pytest -v
 ```
 
-24 tests, all passing without any network access or API key:
+25 tests, all passing without any network access or API key:
 - `tests/test_validation.py` — file-validation edge cases (empty, unsupported, corrupted,
   page-limit) and financial-formula correctness (PASS/FAIL/NOT_APPLICABLE, multi-period balance
   sheet, parenthesised-negative parsing).
@@ -249,7 +249,7 @@ This project was built with the assistance of an AI coding assistant (Claude), u
 generating the initial FastAPI project scaffold and module boundaries, the financial-validation
 formula engine, the frontend dashboard (HTML/CSS/JS), the test suite, and this README. All code
 was reviewed, run, and test-verified locally as part of the same session
-(`cd backend && pytest -v` → 24/24 passing) before being written to this repository.
+(`cd backend && pytest -v` → 25/25 passing) before being written to this repository.
 
 ## Project layout
 
