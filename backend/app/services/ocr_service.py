@@ -54,11 +54,14 @@ def _configure_tesseract():
 
 
 def _ocr_image_bytes(raw: bytes) -> str:
-    from PIL import Image
+    from PIL import Image, ImageOps
     import pytesseract
 
     _configure_tesseract()
     with Image.open(io.BytesIO(raw)) as img:
+        # Camera invoices often rely on EXIF orientation. Apply it before OCR;
+        # browsers do this automatically, Tesseract does not.
+        img = ImageOps.exif_transpose(img)
         original_size = img.size
         img = img.convert("RGB")
         settings = get_settings()
