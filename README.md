@@ -102,7 +102,7 @@ Key ones:
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| POST | `/api/v1/documents/process` | Validate and queue a document (`multipart/form-data`: `file`, `document_type`); valid uploads return `PROCESSING` immediately. |
+| POST | `/api/v1/documents/process` | Validate and synchronously process a document (`multipart/form-data`: `file`, `document_type`), returning the persisted final result. |
 | GET | `/api/v1/documents/{document_name}` | Latest structured result for that file name. |
 | GET | `/api/v1/documents` | List all processed documents (dashboard feed). |
 | GET | `/api/v1/health` | Health check. |
