@@ -151,7 +151,8 @@ publicly reachable at evaluation time.
 ## 8. OCR / extraction / LLM details
 
 - **OCR/parsing**: pdfplumber for native PDF text; PyMuPDF + Tesseract OCR as the fallback for
-  scanned PDFs and all JPG/PNG uploads. `processing_metadata.ocr_used` tells you which path ran.
+  scanned PDFs. JPG/PNG uploads are sent directly to Gemini vision to avoid slow local OCR on
+  camera photographs. `processing_metadata.ocr_used` tells you whether local OCR ran.
 - **LLM**: Google Gemini (`gemini-2.5-flash` by default, configurable via `GEMINI_MODEL`; swap to
   Anthropic Claude by setting `LLM_PROVIDER=anthropic`),
   called once per document with the full page-tagged text. The prompt (see
