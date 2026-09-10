@@ -1,0 +1,58 @@
+{
+  "document_id": "b1e2c3d4-1111-4a2b-9c3d-000000000005",
+  "document_name": "cash_flow_statement_fy26.pdf",
+  "document_type": "cash_flow_statement",
+  "processing_status": "PASS",
+  "overall_confidence": 0.9,
+  "file_validation": {
+    "file_type": "application/pdf",
+    "is_supported": true,
+    "is_readable": true,
+    "page_count": 1,
+    "status": "PASS",
+    "reason": null
+  },
+  "extracted_data": {
+    "operating_cash_flow": {"value": 58000, "confidence": 0.93, "evidence": {"source_text": "Net Cash from Operating Activities 58,000", "page_number": 1}},
+    "investing_cash_flow": {"value": -21000, "confidence": 0.91, "evidence": {"source_text": "Net Cash used in Investing Activities (21,000)", "page_number": 1}},
+    "financing_cash_flow": {"value": null, "confidence": null, "evidence": null},
+    "opening_cash": {"value": 40000, "confidence": 0.92, "evidence": {"source_text": "Cash at Beginning of Period 40,000", "page_number": 1}},
+    "closing_cash": {"value": 77000, "confidence": 0.92, "evidence": {"source_text": "Cash at End of Period 77,000", "page_number": 1}}
+  },
+  "validation": {
+    "checks": [
+      {
+        "name": "net_change_in_cash_check",
+        "formula": "operating_cash_flow + investing_cash_flow + financing_cash_flow + fx_adjustment ≈ net_change_in_cash",
+        "period": "current",
+        "operands": {},
+        "calculated_value": null,
+        "reported_value": null,
+        "variance": null,
+        "status": "NOT_APPLICABLE",
+        "message": "Required field(s) not present in extracted data: financing_cash_flow."
+      },
+      {
+        "name": "closing_cash_check",
+        "formula": "opening_cash + net_change_in_cash + cash_acquired_or_other_adjustments ≈ closing_cash",
+        "period": "current",
+        "operands": {},
+        "calculated_value": null,
+        "reported_value": null,
+        "variance": null,
+        "status": "NOT_APPLICABLE",
+        "message": "Required field(s) not present in extracted data: net_change_in_cash."
+      }
+    ],
+    "overall_status": "NOT_APPLICABLE",
+    "issues": []
+  },
+  "processing_metadata": {
+    "ocr_used": false,
+    "llm_provider": "anthropic",
+    "llm_model": "claude-sonnet-4-6",
+    "processed_at": "2026-09-08T12:20:55Z",
+    "processing_time_ms": 3140
+  },
+  "error": null
+}

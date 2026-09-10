@@ -1,0 +1,86 @@
+<svg viewBox="0 0 1180 760" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Sans, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5B6472"/>
+    </marker>
+  </defs>
+
+  <rect width="1180" height="760" fill="#F6F4EE"/>
+
+  <text x="40" y="42" font-size="22" font-weight="600" fill="#1B2430">Document Intelligence Platform — Architecture</text>
+  <text x="40" y="64" font-size="13" fill="#5B6472">Upload → validate → OCR/extract → AI field extraction → financial validation → persist → dashboard/API</text>
+
+  <!-- Frontend -->
+  <rect x="40" y="100" width="230" height="90" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+  <text x="60" y="130" font-size="14" font-weight="600" fill="#1B2430">Frontend</text>
+  <text x="60" y="150" font-size="12" fill="#5B6472">HTML / CSS / vanilla JS</text>
+  <text x="60" y="168" font-size="12" fill="#5B6472">Upload, dashboard, detail view</text>
+
+  <!-- API -->
+  <rect x="340" y="100" width="260" height="90" rx="3" fill="#FFFFFF" stroke="#1F6F5C" stroke-width="1.5"/>
+  <text x="360" y="130" font-size="14" font-weight="600" fill="#1B2430">FastAPI (/api/v1)</text>
+  <text x="360" y="150" font-size="12" fill="#5B6472">POST /documents/process</text>
+  <text x="360" y="168" font-size="12" fill="#5B6472">GET /documents, /documents/{name}, /health</text>
+
+  <!-- Swagger -->
+  <rect x="670" y="100" width="200" height="90" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+  <text x="690" y="130" font-size="14" font-weight="600" fill="#1B2430">Swagger / OpenAPI</text>
+  <text x="690" y="150" font-size="12" fill="#5B6472">/docs · /redoc</text>
+  <text x="690" y="168" font-size="12" fill="#5B6472">auto-generated from schemas</text>
+
+  <line x1="270" y1="145" x2="340" y2="145" stroke="#5B6472" marker-end="url(#arrow)"/>
+  <line x1="600" y1="145" x2="670" y2="145" stroke="#5B6472" marker-end="url(#arrow)"/>
+
+  <!-- Pipeline column -->
+  <text x="40" y="240" font-size="13" font-weight="600" fill="#5B6472">PROCESSING PIPELINE (backend/app/services)</text>
+
+  <g id="pipeline">
+    <rect x="40" y="260" width="230" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+    <text x="58" y="288" font-size="13" font-weight="600" fill="#1B2430">1. Document Validation</text>
+    <text x="58" y="306" font-size="11.5" fill="#5B6472">type sniff · integrity · page limit</text>
+    <text x="58" y="322" font-size="11.5" fill="#5B6472">document_validation_service.py</text>
+
+    <rect x="310" y="260" width="230" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+    <text x="328" y="288" font-size="13" font-weight="600" fill="#1B2430">2. OCR / Text Extraction</text>
+    <text x="328" y="306" font-size="11.5" fill="#5B6472">pdfplumber → PyMuPDF + Tesseract</text>
+    <text x="328" y="322" font-size="11.5" fill="#5B6472">ocr_service.py</text>
+
+    <rect x="580" y="260" width="230" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+    <text x="598" y="288" font-size="13" font-weight="600" fill="#1B2430">3. AI Field Extraction</text>
+    <text x="598" y="306" font-size="11.5" fill="#5B6472">Anthropic Claude · structured JSON</text>
+    <text x="598" y="322" font-size="11.5" fill="#5B6472">extraction_service.py</text>
+
+    <rect x="850" y="260" width="270" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+    <text x="868" y="288" font-size="13" font-weight="600" fill="#1B2430">4. Financial Validation</text>
+    <text x="868" y="306" font-size="11.5" fill="#5B6472">per-doc-type formulas · tolerance</text>
+    <text x="868" y="322" font-size="11.5" fill="#5B6472">financial_validation_service.py</text>
+
+    <line x1="270" y1="300" x2="310" y2="300" stroke="#5B6472" marker-end="url(#arrow)"/>
+    <line x1="540" y1="300" x2="580" y2="300" stroke="#5B6472" marker-end="url(#arrow)"/>
+    <line x1="810" y1="300" x2="850" y2="300" stroke="#5B6472" marker-end="url(#arrow)"/>
+  </g>
+
+  <line x1="470" y1="190" x2="470" y2="260" stroke="#5B6472" marker-end="url(#arrow)"/>
+
+  <!-- Orchestrator -->
+  <rect x="340" y="400" width="500" height="60" rx="3" fill="#EEF6F3" stroke="#1F6F5C"/>
+  <text x="360" y="435" font-size="13" font-weight="600" fill="#0F3E33">document_service.py — orchestrates the pipeline, builds the response, handles controlled failures</text>
+  <line x1="985" y1="300" x2="985" y2="380" stroke="#5B6472"/>
+  <line x1="985" y1="380" x2="590" y2="380" stroke="#5B6472" marker-end="url(#arrow)"/>
+
+  <!-- Repository + DB -->
+  <rect x="420" y="520" width="340" height="80" rx="3" fill="#FFFFFF" stroke="#DAD4C4"/>
+  <text x="438" y="548" font-size="13" font-weight="600" fill="#1B2430">document_repository.py</text>
+  <text x="438" y="566" font-size="11.5" fill="#5B6472">SQLAlchemy data-access layer</text>
+  <line x1="590" y1="460" x2="590" y2="520" stroke="#5B6472" marker-end="url(#arrow)"/>
+
+  <rect x="470" y="650" width="240" height="70" rx="3" fill="#FFFFFF" stroke="#BEB6A0" stroke-dasharray="4 3"/>
+  <text x="490" y="678" font-size="13" font-weight="600" fill="#1B2430">Database</text>
+  <text x="490" y="696" font-size="11.5" fill="#5B6472">SQLite (default) or Postgres/MySQL</text>
+  <line x1="590" y1="600" x2="590" y2="650" stroke="#5B6472" marker-end="url(#arrow)"/>
+
+  <!-- Return path -->
+  <line x1="340" y1="430" x2="270" y2="430" stroke="#5B6472"/>
+  <line x1="270" y1="430" x2="270" y2="190" stroke="#5B6472" marker-end="url(#arrow)"/>
+  <text x="150" y="425" font-size="11" fill="#5B6472">structured JSON response</text>
+</svg>

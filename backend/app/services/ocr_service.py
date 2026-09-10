@@ -1,0 +1,120 @@
+"""
+Text extraction / OCR service.
+
+Strategy:
+  1. Native PDFs: try direct text-layer extraction (pdfplumber). Cheap, fast
+     and far more accurate than OCR when a real text layer exists.
+  2. Scanned PDFs / images, or PDF pages whose extracted text is suspiciously
+     short (i.e. effectively an image with no usable text layer): rasterise
+     the page with PyMuPDF and run Tesseract OCR over it.
+
+The result is a list of per-page plain-text blocks (1-indexed page numbers)
+plus a flag telling the caller whether OCR was actually used - this is
+surfaced in `processing_metadata.ocr_used` in the API response.
+"""
+import io
+
+from app.core.config import get_settings
+from app.core.exceptions import OCRProcessingError
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+# A page's native text layer is considered "too sparse to trust" below this
+# many non-whitespace characters, and we fall back to OCR for that page.
+_MIN_NATIVE_TEXT_CHARS = 20
+
+
+class PageText:
+    def __init__(self, page_number: int, text: str, source: str):
+        self.page_number = page_number
+        self.text = text
+        self.source = source  # "native" | "ocr"
+
+
+class OCRResult:
+    def __init__(self, pages: list[PageText]):
+        self.pages = pages
+
+    @property
+    def ocr_used(self) -> bool:
+        return any(p.source == "ocr" for p in self.pages)
+
+    @property
+    def full_text(self) -> str:
+        return "\n\n".join(f"[PAGE {p.page_number}]\n{p.text}" for p in self.pages)
+
+
+def _configure_tesseract():
+    settings = get_settings()
+    if settings.TESSERACT_CMD:
+        import pytesseract
+
+        pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
+
+
+def _ocr_image_bytes(raw: bytes) -> str:
+    from PIL import Image
+    import pytesseract
+
+    _configure_tesseract()
+    with Image.open(io.BytesIO(raw)) as img:
+        img = img.convert("RGB")
+        return pytesseract.image_to_string(img)
+
+
+def _extract_native_pdf_text(raw: bytes) -> list[str]:
+    import pdfplumber
+
+    texts: list[str] = []
+    with pdfplumber.open(io.BytesIO(raw)) as pdf:
+        for page in pdf.pages:
+            texts.append(page.extract_text() or "")
+    return texts
+
+
+def _ocr_pdf_page(raw: bytes, page_index: int, dpi: int) -> str:
+    import fitz  # PyMuPDF
+    import pytesseract
+    from PIL import Image
+
+    _configure_tesseract()
+    doc = fitz.open(stream=raw, filetype="pdf")
+    try:
+        page = doc.load_page(page_index)
+        zoom = dpi / 72
+        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
+        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        return pytesseract.image_to_string(img)
+    finally:
+        doc.close()
+
+
+def extract_text(content_type: str, raw: bytes) -> OCRResult:
+    settings = get_settings()
+    logger.info("Starting text extraction content_type=%s", content_type)
+
+    try:
+        if content_type in ("image/jpeg", "image/jpg", "image/png"):
+            text = _ocr_image_bytes(raw)
+            return OCRResult([PageText(1, text, "ocr")])
+
+        if content_type == "application/pdf":
+            native_texts = _extract_native_pdf_text(raw)
+            pages: list[PageText] = []
+            for idx, native_text in enumerate(native_texts):
+                page_number = idx + 1
+                if native_text and len(native_text.strip()) >= _MIN_NATIVE_TEXT_CHARS:
+                    pages.append(PageText(page_number, native_text, "native"))
+                else:
+                    ocr_text = _ocr_pdf_page(raw, idx, settings.OCR_DPI)
+                    pages.append(PageText(page_number, ocr_text, "ocr"))
+            return OCRResult(pages)
+
+        raise OCRProcessingError(f"Unsupported content type for text extraction: {content_type}")
+
+    except OCRProcessingError:
+        raise
+    except Exception as exc:
+        logger.exception("Text extraction failed: %s", exc)
+        raise OCRProcessingError("Failed to extract text from the document (OCR/parsing error).") from exc

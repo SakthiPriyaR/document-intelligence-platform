@@ -1,0 +1,62 @@
+{
+  "document_id": "b1e2c3d4-1111-4a2b-9c3d-000000000003",
+  "document_name": "balance_sheet_fy26.pdf",
+  "document_type": "balance_sheet",
+  "processing_status": "PASS",
+  "overall_confidence": 0.95,
+  "file_validation": {
+    "file_type": "application/pdf",
+    "is_supported": true,
+    "is_readable": true,
+    "page_count": 2,
+    "status": "PASS",
+    "reason": null
+  },
+  "extracted_data": {
+    "company_name": {"value": "Orion Manufacturing Ltd.", "confidence": 0.98, "evidence": {"source_text": "Orion Manufacturing Ltd.", "page_number": 1}},
+    "statement_date": {"value": "2026-03-31", "confidence": 0.97, "evidence": {"source_text": "As at 31 March 2026", "page_number": 1}},
+    "currency": {"value": "INR", "confidence": 0.96, "evidence": {"source_text": "(₹ in lakhs)", "page_number": 1}},
+    "total_assets__2026": {"value": 452000, "confidence": 0.97, "evidence": {"source_text": "Total Assets 4,52,000", "page_number": 1}},
+    "total_liabilities__2026": {"value": 187000, "confidence": 0.96, "evidence": {"source_text": "Total Liabilities 1,87,000", "page_number": 1}},
+    "total_equity__2026": {"value": 265000, "confidence": 0.96, "evidence": {"source_text": "Total Equity 2,65,000", "page_number": 1}},
+    "total_assets__2025": {"value": 398000, "confidence": 0.95, "evidence": {"source_text": "Total Assets 3,98,000", "page_number": 1}},
+    "total_liabilities__2025": {"value": 168000, "confidence": 0.94, "evidence": {"source_text": "Total Liabilities 1,68,000", "page_number": 1}},
+    "total_equity__2025": {"value": 230000, "confidence": 0.94, "evidence": {"source_text": "Total Equity 2,30,000", "page_number": 1}}
+  },
+  "validation": {
+    "checks": [
+      {
+        "name": "balance_sheet_equation",
+        "formula": "total_liabilities + total_equity ≈ total_assets",
+        "period": "2026",
+        "operands": {"total_liabilities": 187000, "total_equity": 265000},
+        "calculated_value": 452000.0,
+        "reported_value": 452000.0,
+        "variance": 0.0,
+        "status": "PASS",
+        "message": null
+      },
+      {
+        "name": "balance_sheet_equation",
+        "formula": "total_liabilities + total_equity ≈ total_assets",
+        "period": "2025",
+        "operands": {"total_liabilities": 168000, "total_equity": 230000},
+        "calculated_value": 398000.0,
+        "reported_value": 398000.0,
+        "variance": 0.0,
+        "status": "PASS",
+        "message": null
+      }
+    ],
+    "overall_status": "PASS",
+    "issues": []
+  },
+  "processing_metadata": {
+    "ocr_used": false,
+    "llm_provider": "anthropic",
+    "llm_model": "claude-sonnet-4-6",
+    "processed_at": "2026-09-08T12:10:44Z",
+    "processing_time_ms": 4120
+  },
+  "error": null
+}

@@ -1,0 +1,14 @@
+flowchart TD
+    U[Browser: HTML/CSS/JS Dashboard] -->|multipart upload| A[FastAPI /api/v1/documents/process]
+    U -->|GET| B[/api/v1/documents/name/]
+    U -->|GET| C[/api/v1/documents list/]
+
+    A --> V[Document Validation Service<br/>type, integrity, page limit]
+    V -->|reject| E[Controlled error response]
+    V -->|pass| O[OCR / Text Extraction Service<br/>pdfplumber native text + PyMuPDF/Tesseract fallback]
+    O --> X[LLM Extraction Service<br/>Anthropic Claude, structured JSON + evidence]
+    X --> F[Financial Validation Service<br/>per document-type formulas, tolerance-based]
+    F --> P[(SQLite / Postgres<br/>ProcessedDocument table)]
+    P --> A
+    B --> P
+    C --> P

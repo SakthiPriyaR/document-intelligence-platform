@@ -1,0 +1,54 @@
+{
+  "document_id": "b1e2c3d4-1111-4a2b-9c3d-000000000002",
+  "document_name": "scanned_invoice_low_quality.jpg",
+  "document_type": "invoice",
+  "processing_status": "FAILED",
+  "overall_confidence": 0.71,
+  "file_validation": {
+    "file_type": "image/jpeg",
+    "is_supported": true,
+    "is_readable": true,
+    "page_count": 1,
+    "status": "PASS",
+    "reason": null
+  },
+  "extracted_data": {
+    "invoice_number": {"value": "INV-88213", "confidence": 0.82, "evidence": {"source_text": "INV-88213", "page_number": 1}},
+    "invoice_date": {"value": "2026-07-02", "confidence": 0.7, "evidence": {"source_text": "02/07/2026", "page_number": 1}},
+    "vendor_name": {"value": "Kestrel Supplies", "confidence": 0.75, "evidence": {"source_text": "Kestrel Supplies", "page_number": 1}},
+    "customer_name": {"value": null, "confidence": null, "evidence": null},
+    "currency": {"value": "USD", "confidence": 0.8, "evidence": {"source_text": "$", "page_number": 1}},
+    "subtotal": {"value": 940.00, "confidence": 0.68, "evidence": {"source_text": "Sub Total 940.00", "page_number": 1}},
+    "tax_amount": {"value": 47.00, "confidence": 0.66, "evidence": {"source_text": "Tax 47.00", "page_number": 1}},
+    "discount": {"value": 0.00, "confidence": 0.6, "evidence": {"source_text": null, "page_number": null}},
+    "total_amount": {"value": 1200.00, "confidence": 0.6, "evidence": {"source_text": "Total: 1200.00 (partially smudged)", "page_number": 1}},
+    "line_items": []
+  },
+  "validation": {
+    "checks": [
+      {
+        "name": "invoice_total_check",
+        "formula": "subtotal + tax_amount - discount",
+        "period": null,
+        "operands": {"subtotal": 940.00, "tax_amount": 47.00, "discount": 0.00},
+        "calculated_value": 987.00,
+        "reported_value": 1200.00,
+        "variance": -213.00,
+        "status": "FAIL",
+        "message": null
+      }
+    ],
+    "overall_status": "FAIL",
+    "issues": [
+      "invoice_total_check (current): reported 1200.0 vs calculated 987.0 (variance -213.0)"
+    ]
+  },
+  "processing_metadata": {
+    "ocr_used": true,
+    "llm_provider": "anthropic",
+    "llm_model": "claude-sonnet-4-6",
+    "processed_at": "2026-09-08T12:04:11Z",
+    "processing_time_ms": 5310
+  },
+  "error": null
+}

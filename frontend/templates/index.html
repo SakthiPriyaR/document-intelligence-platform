@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ledger — Document Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="topbar__mark">§</span>
+    <span class="topbar__name">Ledger</span>
+  </div>
+  <p class="topbar__tagline">Document extraction, validation &amp; reconciliation</p>
+</header>
+
+<main class="layout">
+
+  <!-- ============ INTAKE ============ -->
+  <section class="intake" aria-labelledby="intake-heading">
+    <h1 id="intake-heading">Process a document</h1>
+    <p class="intake__hint">Upload an invoice or financial statement. It will be validated, read, and checked against its own arithmetic.</p>
+
+    <form id="processForm" class="intake__form">
+      <div class="field">
+        <label for="documentType">Document type</label>
+        <select id="documentType" name="document_type" required>
+          <option value="invoice">Invoice</option>
+          <option value="balance_sheet">Balance sheet</option>
+          <option value="profit_and_loss">Profit &amp; loss statement</option>
+          <option value="cash_flow_statement">Cash flow statement</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="fileInput">File</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" name="file" accept=".pdf,.jpg,.jpeg,.png" required />
+          <span id="dropzoneLabel">Choose a PDF, JPG or PNG — up to 3 pages</span>
+        </div>
+      </div>
+
+      <button type="submit" id="processBtn" class="btn btn--primary">Process document</button>
+      <p id="processStatus" class="intake__status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="ledger" aria-labelledby="ledger-heading">
+    <div class="ledger__head">
+      <h2 id="ledger-heading">Processed documents</h2>
+      <button id="refreshBtn" class="btn btn--ghost">Refresh</button>
+    </div>
+
+    <table class="ledger__table" id="ledgerTable">
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th class="num">Confidence</th>
+          <th>Processed</th>
+        </tr>
+      </thead>
+      <tbody id="ledgerBody">
+        <tr class="ledger__empty-row"><td colspan="5">No documents processed yet. Upload one above to get started.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<!-- ============ DETAIL PANEL (slide-over) ============ -->
+<div id="detailOverlay" class="overlay" hidden>
+  <aside id="detailPanel" class="detail" aria-labelledby="detail-heading">
+    <div class="detail__head">
+      <div>
+        <p class="detail__eyebrow" id="detailType"></p>
+        <h2 id="detail-heading" class="detail__title"></h2>
+      </div>
+      <button id="closeDetailBtn" class="btn btn--icon" aria-label="Close">✕</button>
+    </div>
+
+    <div class="detail__tabs">
+      <button class="detail__tab is-active" data-tab="fields">Fields</button>
+      <button class="detail__tab" data-tab="validation">Validation</button>
+      <button class="detail__tab" data-tab="json">Raw JSON</button>
+    </div>
+
+    <div class="detail__body">
+      <div id="tabFields" class="detail__pane is-active">
+        <div id="fileValidationSummary" class="callout"></div>
+        <div id="fieldsGrid" class="fields-grid"></div>
+        <div id="lineItemsWrap"></div>
+      </div>
+
+      <div id="tabValidation" class="detail__pane">
+        <div id="validationSummary" class="callout"></div>
+        <table class="checks-table" id="checksTable">
+          <thead>
+            <tr><th>Check</th><th>Period</th><th>Formula</th><th class="num">Calculated</th><th class="num">Reported</th><th class="num">Variance</th><th>Status</th></tr>
+          </thead>
+          <tbody id="checksBody"></tbody>
+        </table>
+      </div>
+
+      <div id="tabJson" class="detail__pane">
+        <pre id="rawJson" class="raw-json"></pre>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

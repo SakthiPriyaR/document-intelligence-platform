@@ -1,0 +1,28 @@
+{
+  "document_id": "b1e2c3d4-1111-4a2b-9c3d-000000000006",
+  "document_name": "notes.txt",
+  "document_type": "invoice",
+  "processing_status": "FAILED",
+  "overall_confidence": null,
+  "file_validation": {
+    "file_type": "unknown",
+    "is_supported": false,
+    "is_readable": false,
+    "page_count": null,
+    "status": "FAILED",
+    "reason": "Only PDF / JPG / PNG documents are supported."
+  },
+  "extracted_data": {},
+  "validation": null,
+  "processing_metadata": {
+    "ocr_used": false,
+    "llm_provider": null,
+    "llm_model": null,
+    "processed_at": "2026-09-08T12:22:00Z",
+    "processing_time_ms": 4
+  },
+  "error": {
+    "code": "UNSUPPORTED_FILE_TYPE",
+    "message": "Only PDF / JPG / PNG documents are supported."
+  }
+}

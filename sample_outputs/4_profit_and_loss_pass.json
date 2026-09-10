@@ -1,0 +1,74 @@
+{
+  "document_id": "b1e2c3d4-1111-4a2b-9c3d-000000000004",
+  "document_name": "profit_and_loss_fy26.pdf",
+  "document_type": "profit_and_loss",
+  "processing_status": "PASS",
+  "overall_confidence": 0.94,
+  "file_validation": {
+    "file_type": "application/pdf",
+    "is_supported": true,
+    "is_readable": true,
+    "page_count": 1,
+    "status": "PASS",
+    "reason": null
+  },
+  "extracted_data": {
+    "company_name": {"value": "Orion Manufacturing Ltd.", "confidence": 0.97, "evidence": {"source_text": "Orion Manufacturing Ltd.", "page_number": 1}},
+    "period": {"value": "Year ended 31 March 2026", "confidence": 0.96, "evidence": {"source_text": "For the year ended 31 March 2026", "page_number": 1}},
+    "currency": {"value": "INR", "confidence": 0.95, "evidence": {"source_text": "(₹ in lakhs)", "page_number": 1}},
+    "revenue__2026": {"value": 320000, "confidence": 0.97, "evidence": {"source_text": "Revenue from Operations 3,20,000", "page_number": 1}},
+    "cost_of_sales__2026": {"value": 190000, "confidence": 0.95, "evidence": {"source_text": "Cost of Sales 1,90,000", "page_number": 1}},
+    "gross_profit__2026": {"value": 130000, "confidence": 0.95, "evidence": {"source_text": "Gross Profit 1,30,000", "page_number": 1}},
+    "operating_expenses__2026": {"value": 62000, "confidence": 0.93, "evidence": {"source_text": "Operating Expenses 62,000", "page_number": 1}},
+    "operating_profit__2026": {"value": 68000, "confidence": 0.93, "evidence": {"source_text": "Operating Profit 68,000", "page_number": 1}},
+    "tax__2026": {"value": 17000, "confidence": 0.92, "evidence": {"source_text": "Tax Expense 17,000", "page_number": 1}},
+    "net_profit__2026": {"value": 51000, "confidence": 0.93, "evidence": {"source_text": "Net Profit 51,000", "page_number": 1}}
+  },
+  "validation": {
+    "checks": [
+      {
+        "name": "gross_profit_check",
+        "formula": "revenue - cost_of_sales ≈ gross_profit",
+        "period": "2026",
+        "operands": {"revenue": 320000, "cost_of_sales": 190000},
+        "calculated_value": 130000.0,
+        "reported_value": 130000.0,
+        "variance": 0.0,
+        "status": "PASS",
+        "message": null
+      },
+      {
+        "name": "operating_profit_check",
+        "formula": "gross_profit - operating_expenses ≈ operating_profit",
+        "period": "2026",
+        "operands": {"gross_profit": 130000, "operating_expenses": 62000},
+        "calculated_value": 68000.0,
+        "reported_value": 68000.0,
+        "variance": 0.0,
+        "status": "PASS",
+        "message": null
+      },
+      {
+        "name": "net_profit_check",
+        "formula": "operating_profit - tax ≈ net_profit",
+        "period": "2026",
+        "operands": {"operating_profit": 68000, "tax": 17000},
+        "calculated_value": 51000.0,
+        "reported_value": 51000.0,
+        "variance": 0.0,
+        "status": "PASS",
+        "message": null
+      }
+    ],
+    "overall_status": "PASS",
+    "issues": []
+  },
+  "processing_metadata": {
+    "ocr_used": false,
+    "llm_provider": "anthropic",
+    "llm_model": "claude-sonnet-4-6",
+    "processed_at": "2026-09-08T12:15:02Z",
+    "processing_time_ms": 3670
+  },
+  "error": null
+}
