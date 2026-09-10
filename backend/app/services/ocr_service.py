@@ -68,7 +68,9 @@ def _ocr_image_bytes(raw: bytes) -> str:
             resized = (max(1, int(img.width * scale)), max(1, int(img.height * scale)))
             img = img.resize(resized, Image.Resampling.LANCZOS)
             logger.info("Resized image for OCR from %sx%s to %sx%s", *original_size, *resized)
-        return pytesseract.image_to_string(img)
+        return pytesseract.image_to_string(
+            img, config="--psm 6", timeout=settings.OCR_TIMEOUT_SECONDS,
+        )
 
 
 def _extract_native_pdf_text(raw: bytes) -> list[str]:
@@ -93,7 +95,9 @@ def _ocr_pdf_page(raw: bytes, page_index: int, dpi: int) -> str:
         zoom = dpi / 72
         pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        return pytesseract.image_to_string(img)
+        return pytesseract.image_to_string(
+            img, config="--psm 6", timeout=get_settings().OCR_TIMEOUT_SECONDS,
+        )
     finally:
         doc.close()
 
