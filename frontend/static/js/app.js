@@ -125,7 +125,14 @@ els.form.addEventListener("submit", async (e) => {
   if (!file) return;
 
   els.processBtn.disabled = true;
-  setStatus("Uploading and processing — this can take a little while for scanned documents…", "busy");
+  els.processBtn.classList.add("is-processing");
+  els.processBtn.textContent = "Processing...";
+  const startedAt = Date.now();
+  const progressTimer = setInterval(() => {
+    const seconds = Math.floor((Date.now() - startedAt) / 1000);
+    const stage = seconds < 8 ? "Uploading and validating" : seconds < 45 ? "Reading document with OCR" : "Running financial extraction";
+    setStatus(`${stage} · ${seconds}s elapsed. Please keep this tab open.`, "busy");
+  }, 1000);
 
   const formData = new FormData();
   formData.append("file", file);
@@ -147,9 +154,12 @@ els.form.addEventListener("submit", async (e) => {
     await loadDocuments();
     openDetailFromResponse(body);
   } catch (err) {
-    setStatus(`Could not process document: ${err.message}`, "error");
+    setStatus(`Could not process document: ${err.message}. Check Render logs if this persists.`, "error");
   } finally {
+    clearInterval(progressTimer);
     els.processBtn.disabled = false;
+    els.processBtn.classList.remove("is-processing");
+    els.processBtn.textContent = "Process document";
   }
 });
 

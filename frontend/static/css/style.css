@@ -128,6 +128,7 @@ select, input[type="text"] {
 .btn--primary { background: var(--brand); color: #fff; }
 .btn--primary:hover { background: var(--brand-ink); }
 .btn--primary:disabled { opacity: 0.55; cursor: progress; }
+.btn--primary.is-processing::before { content: ""; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 .btn--ghost { background: transparent; border-color: var(--line-strong); color: var(--ink); }
 .btn--ghost:hover { border-color: var(--ink); }
 .btn--icon { padding: 6px 10px; background: transparent; border: none; font-size: 1rem; color: var(--ink-soft); }
@@ -294,3 +295,4 @@ select, input[type="text"] {
 }
 
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
