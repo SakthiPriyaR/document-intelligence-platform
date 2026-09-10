@@ -217,7 +217,9 @@ function openDetailFromResponse(doc) {
   // Fields grid
   const extracted = doc.extracted_data || {};
   const fieldEntries = Object.entries(extracted).filter(([key]) => key !== "line_items");
-  els.fieldsGrid.innerHTML = fieldEntries.length
+  els.fieldsGrid.innerHTML = doc.processing_status === "PROCESSING"
+    ? `<div class="field-card processing-state"><div class="field-card__value">Extraction is still running...</div><div class="field-card__evidence">OCR and financial analysis are running in the background. This panel will refresh automatically.</div></div>`
+    : fieldEntries.length
     ? fieldEntries.map(([key, field]) => renderFieldCard(key, field)).join("")
     : `<div class="field-card">No extracted fields available.</div>`;
 
