@@ -368,6 +368,7 @@ function openDetailFromResponse(doc, { fromUpload = false } = {}) {
 
   els.rawJson.textContent = JSON.stringify(doc, null, 2);
   els.overlay.hidden = false;
+  document.body.classList.add("detail-open");
   switchTab(wasOpen ? currentTab : "fields");
 
   if (isProcessing) {
@@ -434,7 +435,12 @@ function prettifyKey(key) { return String(key).replace(/__/g, " — ").replace(/
 els.closeDetailBtn.addEventListener("click", closeDetail);
 els.overlay.addEventListener("click", (event) => { if (event.target === els.overlay) closeDetail(); });
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDetail(); });
-function closeDetail() { clearTimeout(detailPollTimer); detailPollToken += 1; els.overlay.hidden = true; }
+function closeDetail() {
+  clearTimeout(detailPollTimer);
+  detailPollToken += 1;
+  els.overlay.hidden = true;
+  document.body.classList.remove("detail-open");
+}
 
 els.tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
 function switchTab(name) {

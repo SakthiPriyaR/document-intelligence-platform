@@ -192,10 +192,11 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .status-pill--fail { background: var(--fail-pale); color: var(--fail); }
 .status-pill--na { background: var(--na-pale); color: var(--na); }
 
-/* Detail drawer */
-.overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: rgba(17, 44, 50, .34); backdrop-filter: blur(3px); }
+/* Detail workspace */
+.detail-open { overflow: hidden; }
+.overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(17, 44, 50, .38); backdrop-filter: blur(5px); }
 .overlay[hidden] { display: none; }
-.detail { display: flex; flex-direction: column; width: min(820px, 100vw); height: 100%; overflow: hidden; background: var(--canvas); box-shadow: var(--shadow-panel); animation: slide-in .25s ease-out; }
+.detail { display: flex; flex-direction: column; width: min(1440px, 100%); height: min(900px, 100%); overflow: hidden; border: 1px solid rgba(255, 255, 255, .7); border-radius: 24px; background: var(--canvas); box-shadow: 0 28px 90px rgba(10, 39, 44, .25); animation: rise-in .25s ease-out; }
 .detail__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 29px 34px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .detail__eyebrow { margin: 0 0 4px; color: var(--accent); font: 500 .7rem var(--mono); text-transform: uppercase; }
 .detail__title { max-width: 650px; margin: 0; overflow-wrap: anywhere; font-size: clamp(1.35rem, 3vw, 2rem); }
@@ -210,7 +211,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .callout { margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--muted); font-size: .8rem; }
 .callout--pass { border-color: #a8d7bd; background: var(--pass-pale); }
 .callout--fail { border-color: #efb8b0; background: var(--fail-pale); color: #8c342c; }
-.fields-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--line); }
+.fields-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--line); }
 .field-card { min-width: 0; padding: 15px 16px; background: var(--surface); }
 .field-card.is-missing { background: #fffbf2; }
 .field-card.is-low-confidence { border-left: 3px solid var(--gold); background: var(--gold-pale); }
@@ -234,6 +235,7 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .footer__separator { padding: 0 5px; color: var(--line-strong); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slide-in { from { opacity: 0; transform: translateX(25px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 900px) {
@@ -242,6 +244,8 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   .workspace-grid { grid-template-columns: 1fr; }
   .workflow { min-height: 0; }
   .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
+  .overlay { padding: 10px; }
+  .detail { width: 100%; height: 100%; }
 }
 
 @media (max-width: 620px) {
@@ -266,6 +270,8 @@ select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   .stat-card { min-height: 96px; padding: 14px; }
   .stat-card strong { font-size: 1.25rem; }
   .footer { align-items: flex-start; flex-direction: column; padding: 0 18px 20px; }
+  .overlay { align-items: stretch; padding: 0; }
+  .detail { border: 0; border-radius: 0; }
   .detail__head { padding: 21px 18px 17px; }
   .detail__tabs { padding: 0 12px; }
   .detail__body { padding: 18px 18px 35px; }
