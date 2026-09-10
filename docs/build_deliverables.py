@@ -71,6 +71,13 @@ def add_text(slide, text: str, x, y, w, h, size=16, color=INK,
     return box
 
 
+def add_link(slide, label: str, url: str, x, y, w, h, size=12):
+    """Add a visible, clickable hyperlink to the PowerPoint deck."""
+    box = add_text(slide, label, x, y, w, h, size, TEAL, True)
+    box.text_frame.paragraphs[0].runs[0].hyperlink.address = url
+    return box
+
+
 def add_rich_lines(slide, lines, x, y, w, h, size=15, color=INK,
                    line_spacing=1.15):
     box = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
@@ -321,9 +328,35 @@ def build_pptx(path: Path) -> None:
     add_text(slide, "No secrets committed; runtime key is supplied by the deployment environment.",
              9.20, 5.08, 3.0, 0.72, 13, MUTED)
 
-    # 9. Limitations
+    # 9. Deployment and submission links
     slide = new_slide(prs)
-    add_title(slide, "Limitations and production plan", "What changes beyond evaluation", 9)
+    add_title(slide, "Deployment and submission links", "Ready to submit", 9)
+    add_text(slide, "Use these live links in the internship submission form and during your presentation.",
+             0.70, 1.72, 11.6, 0.35, 16, MUTED)
+    add_card(slide, 0.70, 2.28, 5.70, 1.25, "Deployed Backend API base URL",
+             "https://document-intelligence-platform-kace.onrender.com/api/v1", TEAL, 11)
+    add_link(slide, "Open API base URL", "https://document-intelligence-platform-kace.onrender.com/api/v1",
+             0.95, 3.06, 2.2, 0.22, 11)
+    add_card(slide, 6.72, 2.28, 5.88, 1.25, "Deployed Frontend URL",
+             "https://document-intelligence-platform-kace.onrender.com/", GOLD, 11)
+    add_link(slide, "Open live frontend", "https://document-intelligence-platform-kace.onrender.com/",
+             6.97, 3.06, 2.2, 0.22, 11)
+    add_card(slide, 0.70, 3.78, 5.70, 1.25, "Deployment platform used",
+             "Render - Docker web service on the Free plan", TEAL, 13)
+    add_card(slide, 6.72, 3.78, 5.88, 1.25, "Public GitHub repository",
+             "github.com/SakthiPriyaR/document-intelligence-platform", GOLD, 12)
+    add_link(slide, "Open public repository", "https://github.com/SakthiPriyaR/document-intelligence-platform",
+             6.97, 4.56, 2.8, 0.22, 11)
+    add_text(slide, "PPT sharing", 0.70, 5.63, 1.5, 0.26, 14, TEAL, True)
+    add_link(slide, "Download the version-controlled PPTX from GitHub",
+             "https://github.com/SakthiPriyaR/document-intelligence-platform/blob/main/docs/solution_presentation.pptx",
+             0.72, 6.02, 4.6, 0.26, 12)
+    add_text(slide, "Google Drive submission: upload this PPTX to your Drive, set General access to 'Anyone with the link - Viewer', then paste that share URL into the form.",
+             5.58, 5.92, 6.65, 0.55, 13, INK)
+
+    # 10. Limitations
+    slide = new_slide(prs)
+    add_title(slide, "Limitations and production plan", "What changes beyond evaluation", 10)
     add_text(slide, "The evaluation deployment is intentionally small; the seams for production hardening are explicit.",
              0.70, 1.72, 11.3, 0.35, 16, MUTED)
     add_card(slide, 0.70, 2.35, 5.65, 2.65, "Current limitations",
@@ -334,15 +367,37 @@ def build_pptx(path: Path) -> None:
     add_text(slide, "The current live extraction flow works; durable history requires a persistent database plan.",
              0.72, 6.00, 11.3, 0.35, 16, INK)
 
-    # 10. AI usage and deliverables
+    # 11. AI usage and deliverables
     slide = new_slide(prs)
-    add_title(slide, "AI usage and submission deliverables", "Transparent engineering", 10)
+    add_title(slide, "AI usage and submission deliverables", "Transparent engineering", 11)
     add_card(slide, 0.70, 1.85, 5.65, 3.25, "AI usage declaration",
              "An AI coding assistant supported the initial scaffold, service boundaries, validation engine, frontend, tests, documentation and this presentation.\n\nThe source was reviewed and locally test-verified. Gemini is used at runtime only for evidence-backed field extraction after explicit configuration.", TEAL, 14)
     add_card(slide, 6.70, 1.85, 5.9, 3.25, "Included in the repository",
              "Public GitHub source\nLive frontend, API and Swagger\nREADME with setup and limitations\nArchitecture source plus PNG/PDF exports\nThis solution presentation in PPTX/PDF/Markdown\nSample fixtures and automated tests", GOLD, 14)
     add_text(slide, "Thank you", 0.70, 5.82, 2.4, 0.48, 25, TEAL, True)
     add_text(slide, "Live app: document-intelligence-platform-kace.onrender.com", 0.72, 6.35, 7.6, 0.27, 14, INK)
+
+    # 12. Demo walkthrough
+    slide = new_slide(prs)
+    add_title(slide, "How to present the live demo", "Six-minute walkthrough", 12)
+    steps = [
+        ("01", "Open the live Ledger dashboard", "State the problem: financial documents are unstructured and hard to review."),
+        ("02", "Choose a document type and upload", "Point out PDF/JPG/PNG support, page limit and validation before AI."),
+        ("03", "Explain the processing path", "Validation -> OCR -> Gemini extraction -> financial reconciliation -> persisted result."),
+        ("04", "Open the processed document", "Show fields, evidence, line items, validation checks and raw JSON."),
+        ("05", "Close with assurance", "Mention live deployment, API docs, 25 tests, known limits and the production roadmap."),
+    ]
+    y = 1.72
+    for number, heading, talk_track in steps:
+        badge = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(0.72), Inches(y), Inches(0.48), Inches(0.48))
+        set_fill(badge, TEAL)
+        badge.line.fill.background()
+        add_text(slide, number, 0.72, y + 0.12, 0.48, 0.18, 9, WHITE, True, align=PP_ALIGN.CENTER)
+        add_text(slide, heading, 1.40, y + 0.03, 4.15, 0.25, 14, INK, True)
+        add_text(slide, talk_track, 5.60, y + 0.03, 6.65, 0.38, 13, MUTED)
+        y += 0.88
+    add_text(slide, "Tip: do the upload before your interview starts so the completed record is already available to open.",
+             0.72, 6.35, 10.8, 0.28, 13, GOLD, True)
 
     prs.save(path)
 
@@ -406,6 +461,13 @@ def build_pdf(path: Path) -> None:
             "The live test returned 43 extracted field entries and 6 line items.",
             "Public Render deployment, health endpoint, Swagger and four-type sample fixtures are included.",
         ]),
+        ("Deployment and submission links", "Ready to submit", [
+            "Backend API base URL: https://document-intelligence-platform-kace.onrender.com/api/v1",
+            "Frontend URL: https://document-intelligence-platform-kace.onrender.com/",
+            "Deployment platform: Render Docker web service.",
+            "Public repository: https://github.com/SakthiPriyaR/document-intelligence-platform",
+            "For a Google Drive PPT link, upload solution_presentation.pptx and set access to Anyone with the link - Viewer.",
+        ]),
         ("Limitations and production plan", "What changes beyond evaluation", [
             "Render Free local SQLite storage is ephemeral; managed Postgres is required for durable history.",
             "Production adds authentication, tenant isolation, object storage, durable workers, observability and evaluations.",
@@ -413,6 +475,13 @@ def build_pdf(path: Path) -> None:
         ("AI usage and submission deliverables", "Transparent engineering", [
             "AI coding assistance was reviewed and test-verified; Gemini is used only for configured, evidence-backed extraction.",
             "Repository includes source, live links, README, tests, samples, architecture source/PNG/PDF and this presentation.",
+        ]),
+        ("How to present the live demo", "Six-minute walkthrough", [
+            "Introduce the problem: turn unstructured financial files into traceable ledger records.",
+            "Choose a document type, upload a supported document and explain validation before AI.",
+            "Describe the path: OCR, Gemini extraction, arithmetic checks and persistence.",
+            "Open the processed result to show fields, evidence, line items, validation and raw JSON.",
+            "Close with deployment links, test evidence, limitations and production roadmap.",
         ]),
     ]
     architecture = DOCS / "architecture.png"

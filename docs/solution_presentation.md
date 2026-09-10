@@ -125,7 +125,24 @@ Repository: https://github.com/SakthiPriyaR/document-intelligence-platform
 
 ---
 
-# 9. Limitations and production plan
+# 9. Deployment and submission links
+
+| Required item | Submission value |
+|---|---|
+| Deployed Backend API Base URL | https://document-intelligence-platform-kace.onrender.com/api/v1 |
+| Deployed Frontend URL | https://document-intelligence-platform-kace.onrender.com/ |
+| Deployment Platform Used | Render (Docker web service) |
+| Public GitHub repository | https://github.com/SakthiPriyaR/document-intelligence-platform |
+| Version-controlled PPTX | https://github.com/SakthiPriyaR/document-intelligence-platform/blob/main/docs/solution_presentation.pptx |
+
+For the required Google Drive share URL: upload `docs/solution_presentation.pptx` to the project
+owner's Google Drive, set **General access** to **Anyone with the link - Viewer**, and paste the
+resulting share URL in the application form. A Drive link cannot be created without access to the
+owner's Google account.
+
+---
+
+# 10. Limitations and production plan
 
 - Render Free local SQLite storage is ephemeral; managed Postgres is required for durable history.
 - No authentication or rate limiting in this evaluation deployment.
@@ -136,7 +153,7 @@ Repository: https://github.com/SakthiPriyaR/document-intelligence-platform
 
 ---
 
-# 10. AI usage declaration
+# 11. AI usage declaration
 
 An AI coding assistant supported the initial scaffold, service boundaries, financial formula
 engine, frontend implementation, tests, documentation, and this presentation. The source was
@@ -151,3 +168,14 @@ field extraction after explicit configuration through `GEMINI_API_KEY`.
 - README with setup, architecture, validation, AI usage, and limitations
 - Architecture diagram exports
 - This solution presentation
+
+---
+
+# 12. Six-minute demo walkthrough
+
+1. Introduce the problem: financial files are unstructured and difficult to audit.
+2. Show the live dashboard and choose a document type.
+3. Upload a supported file and explain validation before OCR/AI.
+4. Explain the path: OCR -> Gemini extraction -> financial validation -> persisted result.
+5. Open the result and show evidence, line items, validation checks and Raw JSON.
+6. Close with the Render deployment, Swagger, 25 tests, current limitations and production plan.
