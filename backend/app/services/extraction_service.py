@@ -100,6 +100,9 @@ def _parse_json_response(raw_response: str) -> dict:
     candidates = [cleaned]
     start = cleaned.find("{")
     if start >= 0:
+        end = cleaned.rfind("}")
+        if end > start:
+            candidates.append(cleaned[start:end + 1])
         candidates.append(cleaned[start:])
     for candidate in candidates:
         try:
