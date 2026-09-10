@@ -199,7 +199,17 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
             # hidden reasoning before producing the JSON answer. Minimal
             # thinking keeps extraction fast and leaves room for the result.
             if active_model.startswith("gemini-3"):
-                config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_level="minimal")
+                thinking_type = getattr(types, "ThinkingConfig", None)
+                thinking_fields = getattr(thinking_type, "model_fields", {})
+                if thinking_type and "thinking_level" in thinking_fields:
+                    config_kwargs["thinking_config"] = thinking_type(
+                        thinking_level="minimal"
+                    )
+                else:
+                    # Older google-genai releases do not know the Gemini 3
+                    # thinking_level field. Leave it unset rather than
+                    # sending a config that the installed SDK rejects.
+                    logger.info("Gemini SDK lacks thinking_level; using default thinking configuration")
             config = types.GenerateContentConfig(
                 **config_kwargs,
             )
