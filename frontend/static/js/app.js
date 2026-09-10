@@ -140,10 +140,13 @@ els.form.addEventListener("submit", async (e) => {
 
   try {
     const res = await fetch(`${API_BASE}/documents/process`, { method: "POST", body: formData });
-    const body = await res.json();
+    const responseText = await res.text();
+    let body = {};
+    try { body = responseText ? JSON.parse(responseText) : {}; } catch { /* handled below */ }
     if (!res.ok) {
-      throw new Error(body?.error?.message || `Request failed (${res.status})`);
+      throw new Error(body?.error?.message || `Request failed (${res.status || "empty response"})`);
     }
+    if (!responseText) throw new Error("The server returned an empty response. Please retry after the service wakes up.");
     if (body.processing_status === "PROCESSING") {
       setStatus(`Queued — processing "${body.document_name}" in the background.`, "busy");
     } else if (body.processing_status === "FAILED") {

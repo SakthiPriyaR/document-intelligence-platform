@@ -148,7 +148,16 @@ def process_document_in_background(document_id: str, document_name: str, documen
         record = document_repository.get_by_id(db, document_id)
         if record is not None:
             process_document(db, document_name, document_type, raw, record=record)
-    except Exception:
+    except Exception as exc:
         logger.exception("Background processing failed for document_id=%s", document_id)
+        record = document_repository.get_by_id(db, document_id)
+        if record is not None and record.processing_status == "PROCESSING":
+            record.processing_status = "FAILED"
+            record.processing_metadata = ProcessingMetadata(
+                ocr_used=False, llm_provider=None, llm_model=None,
+                processed_at=datetime.now(timezone.utc), processing_time_ms=0,
+            ).model_dump(mode="json")
+            record.error = {"code": "PROCESSING_FAILED", "message": "The background processing task failed. Check server logs."}
+            document_repository.update(db, record)
     finally:
         db.close()
