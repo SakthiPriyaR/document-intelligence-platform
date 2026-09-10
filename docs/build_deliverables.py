@@ -333,10 +333,10 @@ def build_pptx(path: Path) -> None:
     add_title(slide, "Deployment and submission links", "Ready to submit", 9)
     add_text(slide, "Use these live links in the internship submission form and during your presentation.",
              0.70, 1.72, 11.6, 0.35, 16, MUTED)
-    add_card(slide, 0.70, 2.28, 5.70, 1.25, "Deployed Backend API base URL",
-             "https://document-intelligence-platform-kace.onrender.com/api/v1", TEAL, 11)
-    add_link(slide, "Open API base URL", "https://document-intelligence-platform-kace.onrender.com/api/v1",
-             0.95, 3.06, 2.2, 0.22, 11)
+    add_card(slide, 0.70, 2.28, 5.70, 1.25, "Deployed Backend API (health)",
+             "https://document-intelligence-platform-kace.onrender.com/api/v1/health", TEAL, 10)
+    add_link(slide, "Open working API endpoint", "https://document-intelligence-platform-kace.onrender.com/api/v1/health",
+             0.95, 3.06, 2.8, 0.22, 11)
     add_card(slide, 6.72, 2.28, 5.88, 1.25, "Deployed Frontend URL",
              "https://document-intelligence-platform-kace.onrender.com/", GOLD, 11)
     add_link(slide, "Open live frontend", "https://document-intelligence-platform-kace.onrender.com/",
@@ -462,7 +462,7 @@ def build_pdf(path: Path) -> None:
             "Public Render deployment, health endpoint, Swagger and four-type sample fixtures are included.",
         ]),
         ("Deployment and submission links", "Ready to submit", [
-            "Backend API base URL: https://document-intelligence-platform-kace.onrender.com/api/v1",
+            "Backend API health endpoint: https://document-intelligence-platform-kace.onrender.com/api/v1/health (API prefix: /api/v1).",
             "Frontend URL: https://document-intelligence-platform-kace.onrender.com/",
             "Deployment platform: Render Docker web service.",
             "Public repository: https://github.com/SakthiPriyaR/document-intelligence-platform",

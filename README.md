@@ -95,7 +95,7 @@ Key ones:
 ## 5. Deployed URLs
 
 - Frontend: https://document-intelligence-platform-kace.onrender.com/
-- Backend API base: https://document-intelligence-platform-kace.onrender.com/api/v1
+- Backend API prefix: https://document-intelligence-platform-kace.onrender.com/api/v1 (use `/api/v1/health` as a directly openable endpoint)
 - Swagger/OpenAPI: https://document-intelligence-platform-kace.onrender.com/docs
 - Health check: https://document-intelligence-platform-kace.onrender.com/api/v1/health
 - Public GitHub repo: https://github.com/SakthiPriyaR/document-intelligence-platform

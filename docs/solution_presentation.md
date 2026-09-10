@@ -129,7 +129,7 @@ Repository: https://github.com/SakthiPriyaR/document-intelligence-platform
 
 | Required item | Submission value |
 |---|---|
-| Deployed Backend API Base URL | https://document-intelligence-platform-kace.onrender.com/api/v1 |
+| Deployed Backend API URL (working health check) | https://document-intelligence-platform-kace.onrender.com/api/v1/health |
 | Deployed Frontend URL | https://document-intelligence-platform-kace.onrender.com/ |
 | Deployment Platform Used | Render (Docker web service) |
 | Public GitHub repository | https://github.com/SakthiPriyaR/document-intelligence-platform |
