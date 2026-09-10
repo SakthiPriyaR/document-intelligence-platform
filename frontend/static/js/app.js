@@ -186,10 +186,17 @@ els.refreshBtn.addEventListener("click", loadDocuments);
 
 /* ---------------- Detail panel ---------------- */
 
-async function openDetail(documentName) {
+async function openDetail(documentName, retryCount = 0) {
   try {
     const res = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentName)}`);
-    if (!res.ok) throw new Error(`Could not load document (${res.status})`);
+    if (!res.ok) {
+      if (res.status === 404 && retryCount < 6) {
+        setStatus("Waiting for the processing record...", "busy");
+        setTimeout(() => openDetail(documentName, retryCount + 1), 2000);
+        return;
+      }
+      throw new Error(`Could not load document (${res.status})`);
+    }
     const body = await res.json();
     openDetailFromResponse(body);
   } catch (err) {
