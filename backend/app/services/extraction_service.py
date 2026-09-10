@@ -92,6 +92,24 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
+def _parse_json_response(raw_response: str) -> dict:
+    """Parse strict JSON plus common model wrappers around a JSON object."""
+    cleaned = _strip_code_fences(raw_response)
+    candidates = [cleaned]
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(cleaned[start:end + 1])
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            continue
+    logger.error("LLM returned non-JSON output: %s", cleaned[:500])
+    raise ExtractionError("The AI extraction service returned an unparseable response.")
+
+
 def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None = None) -> str:
     import google.generativeai as genai
 
@@ -186,12 +204,7 @@ def run_extraction(document_type: str, ocr_result: OCRResult) -> dict:
     else:
         raise ExtractionError(f"Unsupported LLM_PROVIDER: {settings.LLM_PROVIDER}")
 
-    cleaned = _strip_code_fences(raw_response)
-    try:
-        parsed = json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        logger.error("LLM returned non-JSON output: %s", raw_response[:500])
-        raise ExtractionError("The AI extraction service returned an unparseable response.") from exc
+    parsed = _parse_json_response(raw_response)
 
     extracted_data = parsed.get("extracted_data")
     if not isinstance(extracted_data, dict):
