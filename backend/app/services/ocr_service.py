@@ -33,8 +33,9 @@ class PageText:
 
 
 class OCRResult:
-    def __init__(self, pages: list[PageText]):
+    def __init__(self, pages: list[PageText], image_bytes: bytes | None = None):
         self.pages = pages
+        self.image_bytes = image_bytes
 
     @property
     def ocr_used(self) -> bool:
@@ -111,8 +112,10 @@ def extract_text(content_type: str, raw: bytes) -> OCRResult:
 
     try:
         if content_type in ("image/jpeg", "image/jpg", "image/png"):
-            text = _ocr_image_bytes(raw)
-            return OCRResult([PageText(1, text, "ocr")])
+            # Preserve the original image for Gemini vision. This bypasses
+            # local Tesseract for camera photographs, which is substantially
+            # faster and handles rotated/complex invoice layouts better.
+            return OCRResult([PageText(1, "", "vision")], image_bytes=raw)
 
         if content_type == "application/pdf":
             native_texts = _extract_native_pdf_text(raw)

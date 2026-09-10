@@ -9,6 +9,7 @@ inventing values that aren't actually present in the document.
 The provider is isolated behind `run_extraction()` so a different
 model/provider can be swapped in by changing this module only.
 """
+import io
 import json
 import re
 
@@ -78,7 +79,7 @@ def _build_user_prompt(document_type: str, ocr_result: OCRResult) -> str:
         f"Document type: {document_type}\n"
         f"At minimum, look for (but do not limit yourself to) these fields where present: "
         f"{', '.join(min_fields)}.\n\n"
-        f"Document text (page-tagged, extracted via OCR/text-layer parsing):\n"
+        f"Document text (page-tagged, extracted via OCR/text-layer parsing; an image is attached for image uploads):\n"
         f"-----\n{ocr_result.full_text}\n-----\n\n"
         f"Return the JSON object described in the system prompt now."
     )
@@ -91,7 +92,7 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
-def _call_gemini(system_prompt: str, user_prompt: str) -> str:
+def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None = None) -> str:
     import google.generativeai as genai
 
     settings = get_settings()
@@ -107,15 +108,24 @@ def _call_gemini(system_prompt: str, user_prompt: str) -> str:
     last_exc: Exception | None = None
     for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
         try:
-            response = model.generate_content(
-                user_prompt,
-                generation_config={
-                    "temperature": 0,
-                    "response_mime_type": "application/json",
-                    "max_output_tokens": 4000,
-                },
-                request_options={"timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS},
-            )
+            generation_config = {
+                "temperature": 0,
+                "response_mime_type": "application/json",
+                "max_output_tokens": 4000,
+            }
+            request_options = {"timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS}
+            if image_bytes:
+                from PIL import Image
+                with Image.open(io.BytesIO(image_bytes)) as image:
+                    response = model.generate_content(
+                        [user_prompt, image], generation_config=generation_config,
+                        request_options=request_options,
+                    )
+            else:
+                response = model.generate_content(
+                    user_prompt, generation_config=generation_config,
+                    request_options=request_options,
+                )
             return response.text
         except Exception as exc:  # network / rate-limit / API errors
             last_exc = exc
@@ -161,7 +171,7 @@ def run_extraction(document_type: str, ocr_result: OCRResult) -> dict:
     user_prompt = _build_user_prompt(document_type, ocr_result)
 
     if settings.LLM_PROVIDER == "gemini":
-        raw_response = _call_gemini(_SYSTEM_PROMPT, user_prompt)
+        raw_response = _call_gemini(_SYSTEM_PROMPT, user_prompt, getattr(ocr_result, "image_bytes", None))
     elif settings.LLM_PROVIDER == "anthropic":
         raw_response = _call_anthropic(_SYSTEM_PROMPT, user_prompt)
     else:
