@@ -180,11 +180,16 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
         except Exception as exc:  # network / rate-limit / API errors
             last_exc = exc
             logger.warning("LLM call attempt %d failed: %s", attempt, exc)
-            if _status_code(exc) == 404 and active_model != "gemini-3.6-flash":
+            status_code = _status_code(exc)
+            if status_code in (404, 429, 500, 502, 503, 504) and active_model != "gemini-3.6-flash":
                 active_model = "gemini-3.6-flash"
-                logger.info("Gemini model unavailable; retrying with fallback model=%s", active_model)
+                logger.info(
+                    "Gemini model unavailable (status=%s); retrying with fallback model=%s",
+                    status_code,
+                    active_model,
+                )
                 continue
-            if _status_code(exc) in (400, 401, 403):
+            if status_code in (400, 401, 403):
                 break
 
     detail = str(last_exc or "unknown error").replace(settings.GEMINI_API_KEY or "", "[redacted]")
