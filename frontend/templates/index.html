@@ -1,128 +1,238 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ledger — Document Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/style.css?v=20260910" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Ledger | Document Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css?v=20260911-ui" />
 </head>
 <body>
-
-<header class="topbar">
-  <div class="topbar__brand">
-    <span class="topbar__mark">§</span>
-    <span class="topbar__name">Ledger</span>
-  </div>
-  <p class="topbar__tagline">Document extraction, validation &amp; reconciliation</p>
-</header>
-
-<main class="layout">
-
-  <!-- ============ INTAKE ============ -->
-  <section class="intake" aria-labelledby="intake-heading">
-    <h1 id="intake-heading">Process a document</h1>
-    <p class="intake__hint">Upload an invoice or financial statement. It will be validated, read, and checked against its own arithmetic.</p>
-
-    <form id="processForm" class="intake__form">
-      <div class="field">
-        <label for="documentType">Document type</label>
-        <select id="documentType" name="document_type" required>
-          <option value="invoice">Invoice</option>
-          <option value="balance_sheet">Balance sheet</option>
-          <option value="profit_and_loss">Profit &amp; loss statement</option>
-          <option value="cash_flow_statement">Cash flow statement</option>
-        </select>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="/" aria-label="Ledger home">
+        <span class="brand__mark" aria-hidden="true">&sect;</span>
+        <span class="brand__name">Ledger</span>
+      </a>
+      <div class="topbar__right">
+        <span class="topbar__label">DOCUMENT INTELLIGENCE</span>
+        <span id="apiStatus" class="api-status is-checking" role="status" aria-live="polite">
+          <span class="api-status__dot" aria-hidden="true"></span>
+          <span id="apiStatusText">Connecting to API</span>
+        </span>
       </div>
+    </div>
+  </header>
 
-      <div class="field">
-        <label for="fileInput">File</label>
-        <div class="dropzone" id="dropzone">
-          <input type="file" id="fileInput" name="file" accept=".pdf,.jpg,.jpeg,.png" required />
-          <span id="dropzoneLabel">Choose a PDF, JPG or PNG — up to 3 pages</span>
+  <main class="page">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero__copy">
+        <p class="eyebrow">FINANCIAL OPERATIONS <span>/</span> 01</p>
+        <h1 id="page-title">Turn financial documents into a clear ledger.</h1>
+        <p class="hero__intro">Upload an invoice or statement and get structured fields, traceable evidence, and arithmetic checks in one place.</p>
+        <div class="hero__chips" aria-label="Supported document types">
+          <span>Invoices</span>
+          <span>Balance sheets</span>
+          <span>P&amp;L statements</span>
+          <span>Cash flow</span>
+        </div>
+      </div>
+      <aside class="hero__aside" aria-label="Workspace status">
+        <p class="hero__aside-label">WORKSPACE STATUS</p>
+        <p class="hero__aside-value"><span class="live-dot" aria-hidden="true"></span> Ready to process</p>
+        <p class="hero__aside-note">Every upload is validated before AI extraction begins.</p>
+      </aside>
+    </section>
+
+    <section class="workspace-grid" aria-label="Document processing workspace">
+      <section class="card intake" aria-labelledby="intake-heading">
+        <div class="card__head">
+          <div>
+            <p class="eyebrow">NEW DOCUMENT</p>
+            <h2 id="intake-heading">Process a document</h2>
+          </div>
+          <span class="card__index">01 <span>/</span> 02</span>
+        </div>
+        <p class="card__intro">Choose the document type, add a file, and let Ledger validate and reconcile the result.</p>
+
+        <form id="processForm" class="intake__form">
+          <div class="field">
+            <div class="field__label-row">
+              <label for="documentType">Document type</label>
+              <span class="field__hint">Required</span>
+            </div>
+            <div class="select-wrap">
+              <select id="documentType" name="document_type" required>
+                <option value="invoice">Invoice</option>
+                <option value="balance_sheet">Balance sheet</option>
+                <option value="profit_and_loss">Profit &amp; loss statement</option>
+                <option value="cash_flow_statement">Cash flow statement</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field__label-row">
+              <label for="fileInput">Upload file</label>
+              <span class="field__hint">PDF, JPG or PNG <span>&middot;</span> max 3 pages</span>
+            </div>
+            <label class="dropzone" id="dropzone" for="fileInput">
+              <input type="file" id="fileInput" name="file" accept=".pdf,.jpg,.jpeg,.png" required />
+              <span class="dropzone__icon" aria-hidden="true">&uarr;</span>
+              <span class="dropzone__copy">
+                <strong id="dropzoneLabel">Drop your document here</strong>
+                <small id="dropzoneHint">or browse from your computer</small>
+              </span>
+              <span class="dropzone__meta">15 MB max</span>
+            </label>
+          </div>
+
+          <div class="intake__actions">
+            <button type="submit" id="processBtn" class="btn btn--primary">
+              <span>Process document</span>
+              <span class="btn__arrow" aria-hidden="true">&rarr;</span>
+            </button>
+            <span class="action-note"><span class="action-note__dot" aria-hidden="true"></span> Results saved to ledger</span>
+          </div>
+          <p id="processStatus" class="intake__status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <aside class="card workflow" aria-labelledby="workflow-heading">
+        <div class="card__head">
+          <div>
+            <p class="eyebrow">HOW IT WORKS</p>
+            <h2 id="workflow-heading">From file to insight</h2>
+          </div>
+          <span class="workflow__spark" aria-hidden="true">&#10022;</span>
+        </div>
+        <p class="card__intro">A transparent processing path keeps every result easy to understand.</p>
+        <ol class="workflow__steps" id="workflowSteps">
+          <li class="workflow__step" data-step="validate">
+            <span class="workflow__number">01</span>
+            <span><strong>Validate</strong><small>Type, integrity &amp; page count</small></span>
+          </li>
+          <li class="workflow__step" data-step="extract">
+            <span class="workflow__number">02</span>
+            <span><strong>Extract</strong><small>Fields, evidence &amp; line items</small></span>
+          </li>
+          <li class="workflow__step" data-step="reconcile">
+            <span class="workflow__number">03</span>
+            <span><strong>Reconcile</strong><small>Financial formulas &amp; status</small></span>
+          </li>
+          <li class="workflow__step" data-step="store">
+            <span class="workflow__number">04</span>
+            <span><strong>Store</strong><small>Result available in the ledger</small></span>
+          </li>
+        </ol>
+        <div class="workflow__footer"><span class="workflow__footer-icon">&#10003;</span> Evidence-backed structured JSON</div>
+      </aside>
+    </section>
+
+    <section class="ledger" aria-labelledby="ledger-heading">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">PROCESSING HISTORY <span>/</span> 02</p>
+          <h2 id="ledger-heading">Processed documents</h2>
+          <p class="section-head__note">Open any record to inspect its fields, checks, and raw response.</p>
+        </div>
+        <div class="section-head__actions">
+          <span id="lastUpdated" class="last-updated">Not synced yet</span>
+          <button id="refreshBtn" class="btn btn--secondary" type="button">
+            <span id="refreshIcon" aria-hidden="true">&#8635;</span>
+            <span id="refreshText">Refresh</span>
+          </button>
         </div>
       </div>
 
-      <button type="submit" id="processBtn" class="btn btn--primary">Process document</button>
-      <p id="processStatus" class="intake__status" role="status" aria-live="polite"></p>
-    </form>
-  </section>
+      <div class="dashboard-stats" id="dashboardStats" aria-label="Dashboard summary"></div>
 
-  <!-- ============ DASHBOARD ============ -->
-  <section class="ledger" aria-labelledby="ledger-heading">
-    <div class="ledger__head">
-      <h2 id="ledger-heading">Processed documents</h2>
-      <button id="refreshBtn" class="btn btn--ghost">Refresh</button>
-    </div>
-
-    <div class="dashboard-stats" id="dashboardStats" aria-label="Dashboard summary"></div>
-    <div class="ledger__filters">
-      <input id="searchInput" type="text" placeholder="Search documents..." aria-label="Search documents" />
-      <select id="statusFilter" aria-label="Filter by status"><option value="">All statuses</option><option>PASS</option><option>FAILED</option></select>
-      <select id="typeFilter" aria-label="Filter by type"><option value="">All types</option></select>
-    </div>
-
-    <table class="ledger__table" id="ledgerTable">
-      <thead>
-        <tr>
-          <th>Document</th>
-          <th>Type</th>
-          <th>Status</th>
-          <th class="num">Confidence</th>
-          <th>Processed</th>
-        </tr>
-      </thead>
-      <tbody id="ledgerBody">
-        <tr class="ledger__empty-row"><td colspan="5">No documents processed yet. Upload one above to get started.</td></tr>
-      </tbody>
-    </table>
-  </section>
-
-</main>
-
-<!-- ============ DETAIL PANEL (slide-over) ============ -->
-<div id="detailOverlay" class="overlay" hidden>
-  <aside id="detailPanel" class="detail" aria-labelledby="detail-heading">
-    <div class="detail__head">
-      <div>
-        <p class="detail__eyebrow" id="detailType"></p>
-        <h2 id="detail-heading" class="detail__title"></h2>
-      </div>
-      <button id="closeDetailBtn" class="btn btn--icon" aria-label="Close">✕</button>
-    </div>
-
-    <div class="detail__tabs">
-      <button class="detail__tab is-active" data-tab="fields">Fields</button>
-      <button class="detail__tab" data-tab="validation">Validation</button>
-      <button class="detail__tab" data-tab="json">Raw JSON</button>
-    </div>
-
-    <div class="detail__body">
-      <div id="tabFields" class="detail__pane is-active">
-        <div id="fileValidationSummary" class="callout"></div>
-        <div id="fieldsGrid" class="fields-grid"></div>
-        <div id="lineItemsWrap"></div>
+      <div class="ledger__toolbar">
+        <label class="search-box" for="searchInput">
+          <span aria-hidden="true">&#9906;</span>
+          <input id="searchInput" type="search" placeholder="Search by document name" aria-label="Search documents" />
+        </label>
+        <select id="statusFilter" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="PASS">Passed</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="FAILED">Failed</option>
+        </select>
+        <select id="typeFilter" aria-label="Filter by document type">
+          <option value="">All document types</option>
+        </select>
       </div>
 
-      <div id="tabValidation" class="detail__pane">
-        <div id="validationSummary" class="callout"></div>
-        <table class="checks-table" id="checksTable">
+      <div class="table-shell">
+        <table class="ledger__table" id="ledgerTable">
           <thead>
-            <tr><th>Check</th><th>Period</th><th>Formula</th><th class="num">Calculated</th><th class="num">Reported</th><th class="num">Variance</th><th>Status</th></tr>
+            <tr>
+              <th>Document</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th class="num">Confidence</th>
+              <th>Processed</th>
+              <th class="table-action" aria-label="Open document"></th>
+            </tr>
           </thead>
-          <tbody id="checksBody"></tbody>
+          <tbody id="ledgerBody">
+            <tr class="ledger__empty-row"><td colspan="6">Loading your document ledger...</td></tr>
+          </tbody>
         </table>
       </div>
+    </section>
+  </main>
 
-      <div id="tabJson" class="detail__pane">
-        <pre id="rawJson" class="raw-json"></pre>
+  <footer class="footer">
+    <span><span class="footer__mark">&sect;</span> Ledger</span>
+    <span>Structured extraction <span class="footer__separator">&middot;</span> evidence <span class="footer__separator">&middot;</span> reconciliation</span>
+  </footer>
+
+  <div id="detailOverlay" class="overlay" hidden>
+    <aside id="detailPanel" class="detail" aria-labelledby="detail-heading" role="dialog" aria-modal="true">
+      <div class="detail__head">
+        <div>
+          <p class="detail__eyebrow" id="detailType"></p>
+          <h2 id="detail-heading" class="detail__title"></h2>
+        </div>
+        <button id="closeDetailBtn" class="btn btn--icon" type="button" aria-label="Close document details">&times;</button>
       </div>
-    </div>
-  </aside>
-</div>
 
-<script src="/static/js/app.js?v=20260910"></script>
+      <div class="detail__tabs" role="tablist" aria-label="Document details">
+        <button class="detail__tab is-active" data-tab="fields" role="tab" type="button">Fields</button>
+        <button class="detail__tab" data-tab="validation" role="tab" type="button">Validation</button>
+        <button class="detail__tab" data-tab="json" role="tab" type="button">Raw JSON</button>
+      </div>
+
+      <div class="detail__body">
+        <div id="tabFields" class="detail__pane is-active" role="tabpanel">
+          <div id="fileValidationSummary" class="callout"></div>
+          <div id="fieldsGrid" class="fields-grid"></div>
+          <div id="lineItemsWrap"></div>
+        </div>
+
+        <div id="tabValidation" class="detail__pane" role="tabpanel">
+          <div id="validationSummary" class="callout"></div>
+          <div class="checks-shell">
+            <table class="checks-table" id="checksTable">
+              <thead>
+                <tr><th>Check</th><th>Period</th><th>Formula</th><th class="num">Calculated</th><th class="num">Reported</th><th class="num">Variance</th><th>Status</th></tr>
+              </thead>
+              <tbody id="checksBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tabJson" class="detail__pane" role="tabpanel">
+          <pre id="rawJson" class="raw-json"></pre>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/static/js/app.js?v=20260911-ui"></script>
 </body>
 </html>

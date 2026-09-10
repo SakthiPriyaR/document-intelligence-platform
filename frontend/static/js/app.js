@@ -1,7 +1,8 @@
-/* Document Intelligence dashboard — vanilla JS, talks to the FastAPI
-   backend under /api/v1. No build step, no frameworks. */
+/* Ledger dashboard UI. The backend API contract is unchanged. */
 
 const API_BASE = "/api/v1";
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
 
 const els = {
   form: document.getElementById("processForm"),
@@ -9,9 +10,15 @@ const els = {
   fileInput: document.getElementById("fileInput"),
   dropzone: document.getElementById("dropzone"),
   dropzoneLabel: document.getElementById("dropzoneLabel"),
+  dropzoneHint: document.getElementById("dropzoneHint"),
   processBtn: document.getElementById("processBtn"),
   processStatus: document.getElementById("processStatus"),
+  apiStatus: document.getElementById("apiStatus"),
+  apiStatusText: document.getElementById("apiStatusText"),
   refreshBtn: document.getElementById("refreshBtn"),
+  refreshIcon: document.getElementById("refreshIcon"),
+  refreshText: document.getElementById("refreshText"),
+  lastUpdated: document.getElementById("lastUpdated"),
   ledgerBody: document.getElementById("ledgerBody"),
   overlay: document.getElementById("detailOverlay"),
   closeDetailBtn: document.getElementById("closeDetailBtn"),
@@ -27,6 +34,7 @@ const els = {
   searchInput: document.getElementById("searchInput"),
   statusFilter: document.getElementById("statusFilter"),
   typeFilter: document.getElementById("typeFilter"),
+  workflowSteps: document.querySelectorAll(".workflow__step"),
   tabs: document.querySelectorAll(".detail__tab"),
   panes: {
     fields: document.getElementById("tabFields"),
@@ -41,7 +49,11 @@ const DOC_TYPE_LABELS = {
   profit_and_loss: "Profit & loss",
   cash_flow_statement: "Cash flow statement",
 };
+const WORKFLOW_ORDER = ["validate", "extract", "reconcile", "store"];
 let allDocuments = [];
+let activeDocumentName = null;
+let detailPollTimer = null;
+let detailPollToken = 0;
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -52,52 +64,90 @@ function fmtDate(iso) {
   } catch { return iso; }
 }
 
+function formatBytes(bytes) {
+  if (!bytes) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function statusPill(status) {
-  const cls = status === "PASS" ? "status-pill--pass" : status === "FAILED" || status === "FAIL" ? "status-pill--fail" : "status-pill--na";
-  return `<span class="status-pill ${cls}">${status}</span>`;
+  const normalized = status || "UNKNOWN";
+  const cls = normalized === "PASS"
+    ? "status-pill--pass"
+    : normalized === "FAILED" || normalized === "FAIL"
+    ? "status-pill--fail"
+    : "status-pill--na";
+  const label = normalized === "PROCESSING" ? "PROCESSING" : normalized;
+  return `<span class="status-pill ${cls}">${escapeHtml(label)}</span>`;
+}
+
+function setApiStatus(state, message) {
+  els.apiStatus.classList.remove("is-checking", "is-online", "is-offline");
+  els.apiStatus.classList.add(state);
+  els.apiStatusText.textContent = message;
+}
+
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    setApiStatus("is-online", "API connected");
+  } catch {
+    setApiStatus("is-offline", "API unavailable");
+  }
 }
 
 /* ---------------- Dashboard list ---------------- */
 
-async function loadDocuments() {
-  els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="5">Loading…</td></tr>`;
+async function loadDocuments({ silent = false } = {}) {
+  if (!silent) {
+    els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="6">Loading your document ledger...</td></tr>`;
+  }
   try {
-    const res = await fetch(`${API_BASE}/documents`);
+    const res = await fetch(`${API_BASE}/documents`, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to load documents (${res.status})`);
     const data = await res.json();
     allDocuments = data.documents || [];
     renderStats(allDocuments);
     renderTypeFilter(allDocuments);
     renderLedger(filteredDocuments());
+    els.lastUpdated.textContent = `Synced ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   } catch (err) {
-    els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="5">Could not load documents: ${escapeHtml(err.message)}</td></tr>`;
+    if (!silent || !allDocuments.length) {
+      els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="6">Could not load documents: ${escapeHtml(err.message)}</td></tr>`;
+    }
   }
 }
 
 function renderLedger(documents) {
   if (!documents.length) {
-    els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="5">No documents processed yet. Upload one above to get started.</td></tr>`;
+    els.ledgerBody.innerHTML = `<tr class="ledger__empty-row"><td colspan="6">No documents match these filters.</td></tr>`;
     return;
   }
   els.ledgerBody.innerHTML = documents.map((doc) => `
-    <tr data-name="${escapeAttr(doc.document_name)}">
+    <tr data-name="${escapeAttr(doc.document_name)}" tabindex="0" role="button" aria-label="Open ${escapeAttr(doc.document_name)}">
       <td data-label="Document">${escapeHtml(doc.document_name)}</td>
-      <td data-label="Type">${DOC_TYPE_LABELS[doc.document_type] || doc.document_type}</td>
+      <td data-label="Type">${escapeHtml(DOC_TYPE_LABELS[doc.document_type] || doc.document_type)}</td>
       <td data-label="Status">${statusPill(doc.processing_status)}</td>
-      <td data-label="Confidence" class="num">${doc.overall_confidence != null ? (doc.overall_confidence * 100).toFixed(0) + "%" : "—"}</td>
-      <td data-label="Processed">${fmtDate(doc.processed_at)}</td>
+      <td data-label="Confidence" class="num">${doc.overall_confidence != null ? `${(doc.overall_confidence * 100).toFixed(0)}%` : "—"}</td>
+      <td data-label="Processed">${fmtDate(doc.processed_at || doc.created_at)}</td>
+      <td class="table-action"><span class="row-arrow" aria-hidden="true">&rarr;</span></td>
     </tr>
   `).join("");
 
   els.ledgerBody.querySelectorAll("tr[data-name]").forEach((row) => {
-    row.addEventListener("click", () => openDetail(row.getAttribute("data-name")));
+    const open = () => openDetail(row.getAttribute("data-name"));
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); }
+    });
   });
 }
 
 function filteredDocuments() {
   const query = (els.searchInput.value || "").toLowerCase().trim();
   return allDocuments.filter((doc) =>
-    (!query || doc.document_name.toLowerCase().includes(query)) &&
+    (!query || (doc.document_name || "").toLowerCase().includes(query)) &&
     (!els.statusFilter.value || doc.processing_status === els.statusFilter.value) &&
     (!els.typeFilter.value || doc.document_type === els.typeFilter.value)
   );
@@ -106,32 +156,60 @@ function filteredDocuments() {
 function renderStats(documents) {
   const processed = documents.length;
   const passed = documents.filter((d) => d.processing_status === "PASS").length;
+  const failed = documents.filter((d) => ["FAILED", "FAIL"].includes(d.processing_status)).length;
   const confidences = documents.map((d) => d.overall_confidence).filter((v) => v != null);
-  const average = confidences.length ? `${(confidences.reduce((a, b) => a + b, 0) / confidences.length * 100).toFixed(0)}%` : "—";
-  els.stats.innerHTML = [["Processed", processed], ["Pass rate", processed ? `${Math.round(passed / processed * 100)}%` : "—"], ["Avg confidence", average]].map(([label, value]) => `<div class="stat-card"><span>${label}</span><strong>${value}</strong></div>`).join("");
+  const average = confidences.length
+    ? `${(confidences.reduce((a, b) => a + b, 0) / confidences.length * 100).toFixed(0)}%`
+    : "—";
+  const cards = [
+    ["Processed", processed, "documents", ""],
+    ["Passed", passed, "validation-ready", "stat-card--pass"],
+    ["Needs attention", failed, "failed records", "stat-card--fail"],
+    ["Avg confidence", average, confidences.length ? "across scored fields" : "not reported", ""],
+  ];
+  els.stats.innerHTML = cards.map(([label, value, note, cls]) => `
+    <div class="stat-card ${cls}"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>
+  `).join("");
 }
 
 function renderTypeFilter(documents) {
   const selected = els.typeFilter.value;
-  els.typeFilter.innerHTML = `<option value="">All types</option>` + [...new Set(documents.map((d) => d.document_type))].map((type) => `<option value="${escapeAttr(type)}">${escapeHtml(DOC_TYPE_LABELS[type] || type)}</option>`).join("");
-  els.typeFilter.value = selected;
+  const types = [...new Set(documents.map((d) => d.document_type).filter(Boolean))];
+  els.typeFilter.innerHTML = `<option value="">All document types</option>`
+    + types.map((type) => `<option value="${escapeAttr(type)}">${escapeHtml(DOC_TYPE_LABELS[type] || type)}</option>`).join("");
+  els.typeFilter.value = types.includes(selected) ? selected : "";
 }
 
 /* ---------------- Upload / process ---------------- */
 
-els.form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+els.form.addEventListener("submit", async (event) => {
+  event.preventDefault();
   const file = els.fileInput.files[0];
-  if (!file) return;
+  if (!file) {
+    setStatus("Choose a PDF, JPG or PNG before processing.", "error");
+    return;
+  }
+  const extension = file.name.split(".").pop().toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    setStatus("Only PDF, JPG, JPEG and PNG files are supported.", "error");
+    return;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    setStatus("This file is larger than the 15 MB limit.", "error");
+    return;
+  }
 
   els.processBtn.disabled = true;
   els.processBtn.classList.add("is-processing");
-  els.processBtn.textContent = "Processing...";
+  els.processBtn.querySelector("span:first-child").textContent = "Processing";
   const startedAt = Date.now();
+  setWorkflowStage("validate");
   const progressTimer = setInterval(() => {
     const seconds = Math.floor((Date.now() - startedAt) / 1000);
-    const stage = seconds < 8 ? "Uploading and validating" : seconds < 45 ? "Reading document with OCR" : "Running financial extraction";
-    setStatus(`${stage} · ${seconds}s elapsed. Please keep this tab open.`, "busy");
+    const stage = seconds < 5 ? "validate" : seconds < 35 ? "extract" : "reconcile";
+    setWorkflowStage(stage);
+    const label = stage === "validate" ? "Validating file" : stage === "extract" ? "Extracting fields" : "Reconciling totals";
+    setStatus(`${label} · ${seconds}s elapsed.`, "busy");
   }, 1000);
 
   const formData = new FormData();
@@ -142,29 +220,23 @@ els.form.addEventListener("submit", async (e) => {
     const res = await fetch(`${API_BASE}/documents/process`, { method: "POST", body: formData });
     const responseText = await res.text();
     let body = {};
-    try { body = responseText ? JSON.parse(responseText) : {}; } catch { /* handled below */ }
-    if (!res.ok) {
-      throw new Error(body?.error?.message || `Request failed (${res.status || "empty response"})`);
-    }
+    try { body = responseText ? JSON.parse(responseText) : {}; } catch { /* handled by the message below */ }
+    if (!res.ok) throw new Error(body?.error?.message || `Request failed (${res.status || "empty response"})`);
     if (!responseText) throw new Error("The server returned an empty response. Please retry after the service wakes up.");
-    if (body.processing_status === "PROCESSING") {
-      setStatus(`Queued — processing "${body.document_name}" in the background.`, "busy");
-    } else if (body.processing_status === "FAILED") {
-      setStatus(`Processed with status FAILED: ${body.error ? body.error.message : "see details in the ledger."}`, "error");
-    } else {
-      setStatus(`Done — "${body.document_name}" processed successfully.`, "ok");
-    }
+
+    activeDocumentName = body.document_name;
     els.form.reset();
-    els.dropzoneLabel.textContent = "Choose a PDF, JPG or PNG — up to 3 pages";
-    await loadDocuments();
-    openDetailFromResponse(body);
+    resetFilePicker();
+    await loadDocuments({ silent: true });
+    openDetailFromResponse(body, { fromUpload: true });
   } catch (err) {
-    setStatus(`Could not process document: ${err.message}. Check Render logs if this persists.`, "error");
+    setStatus(`Could not process document: ${err.message}`, "error");
+    setWorkflowStage("idle");
   } finally {
     clearInterval(progressTimer);
     els.processBtn.disabled = false;
     els.processBtn.classList.remove("is-processing");
-    els.processBtn.textContent = "Process document";
+    els.processBtn.querySelector("span:first-child").textContent = "Process document";
   }
 });
 
@@ -173,74 +245,119 @@ function setStatus(message, state) {
   els.processStatus.setAttribute("data-state", state);
 }
 
-els.fileInput.addEventListener("change", () => {
-  const file = els.fileInput.files[0];
-  els.dropzoneLabel.textContent = file ? file.name : "Choose a PDF, JPG or PNG — up to 3 pages";
-});
-["dragover", "dragleave", "drop"].forEach((evt) => {
-  els.dropzone.addEventListener(evt, (e) => {
-    e.preventDefault();
-    els.dropzone.classList.toggle("is-dragover", evt === "dragover");
-  });
+function updateFilePicker(file) {
+  if (!file) { resetFilePicker(); return; }
+  els.dropzone.classList.add("has-file");
+  els.dropzoneLabel.textContent = file.name;
+  els.dropzoneHint.textContent = `${formatBytes(file.size)} · ready to process`;
+}
+
+function resetFilePicker() {
+  els.fileInput.value = "";
+  els.dropzone.classList.remove("has-file");
+  els.dropzoneLabel.textContent = "Drop your document here";
+  els.dropzoneHint.textContent = "or browse from your computer";
+}
+
+els.fileInput.addEventListener("change", () => updateFilePicker(els.fileInput.files[0]));
+els.dropzone.addEventListener("dragover", (event) => { event.preventDefault(); els.dropzone.classList.add("is-dragover"); });
+els.dropzone.addEventListener("dragleave", () => els.dropzone.classList.remove("is-dragover"));
+els.dropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  els.dropzone.classList.remove("is-dragover");
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  try {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    els.fileInput.files = transfer.files;
+  } catch { /* Browsers without DataTransfer assignment still allow browsing. */ }
+  updateFilePicker(file);
 });
 
-els.refreshBtn.addEventListener("click", loadDocuments);
+function setWorkflowStage(stage) {
+  const index = WORKFLOW_ORDER.indexOf(stage);
+  els.workflowSteps.forEach((step, stepIndex) => {
+    step.classList.toggle("is-active", index >= 0 && stepIndex === index);
+    step.classList.toggle("is-done", index >= 0 && stepIndex < index);
+  });
+}
+
+async function refreshDocuments() {
+  els.refreshBtn.disabled = true;
+  els.refreshBtn.classList.add("is-refreshing");
+  els.refreshText.textContent = "Syncing";
+  await loadDocuments({ silent: true });
+  els.refreshBtn.disabled = false;
+  els.refreshBtn.classList.remove("is-refreshing");
+  els.refreshText.textContent = "Refresh";
+}
+
+els.refreshBtn.addEventListener("click", refreshDocuments);
 [els.searchInput, els.statusFilter, els.typeFilter].forEach((control) => control.addEventListener("input", () => renderLedger(filteredDocuments())));
 
-/* ---------------- Detail panel ---------------- */
+/* ---------------- Detail drawer ---------------- */
 
 async function openDetail(documentName, retryCount = 0) {
+  activeDocumentName = documentName;
   try {
-    const res = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentName)}`);
+    const res = await fetch(`${API_BASE}/documents/${encodeURIComponent(documentName)}`, { cache: "no-store" });
     if (!res.ok) {
-      if ([404, 502, 503, 504].includes(res.status) && retryCount < 12) {
-        setStatus("Service is waking up; retrying...", "busy");
-        setTimeout(() => openDetail(documentName, retryCount + 1), 2000);
+      if ([404, 429, 502, 503, 504].includes(res.status) && retryCount < 15) {
+        scheduleDetailPoll(documentName, retryCount + 1, 2500);
         return;
       }
       throw new Error(`Could not load document (${res.status})`);
     }
-    const body = await res.json();
-    openDetailFromResponse(body);
+    openDetailFromResponse(await res.json());
   } catch (err) {
     setStatus(err.message, "error");
   }
 }
 
-function openDetailFromResponse(doc) {
-  if (doc.processing_status === "FAILED") {
-    setStatus(`Processing failed: ${doc.error?.message || "see the detail panel."}`, "error");
-  }
+function scheduleDetailPoll(documentName, retryCount = 0, delay = 2500) {
+  clearTimeout(detailPollTimer);
+  const token = ++detailPollToken;
+  detailPollTimer = setTimeout(() => {
+    if (token === detailPollToken && activeDocumentName === documentName) openDetail(documentName, retryCount);
+  }, delay);
+}
+
+function openDetailFromResponse(doc, { fromUpload = false } = {}) {
+  const wasOpen = !els.overlay.hidden;
+  const currentTab = [...els.tabs].find((tab) => tab.classList.contains("is-active"))?.dataset.tab || "fields";
+  const isProcessing = doc.processing_status === "PROCESSING";
+  const isFailed = doc.processing_status === "FAILED";
+  const isPassed = doc.processing_status === "PASS";
+
+  activeDocumentName = doc.document_name;
   els.detailType.textContent = DOC_TYPE_LABELS[doc.document_type] || doc.document_type;
   els.detailTitle.textContent = doc.document_name;
 
-  // File validation summary
   const fv = doc.file_validation || {};
   els.fileValidationSummary.className = `callout ${fv.status === "PASS" ? "callout--pass" : "callout--fail"}`;
-  els.fileValidationSummary.innerHTML = `File validation: ${statusPill(fv.status)} &nbsp;·&nbsp; ${fv.file_type || "unknown type"} &nbsp;·&nbsp; ${fv.page_count ?? "?"} page(s)`
+  els.fileValidationSummary.innerHTML = `File validation: ${statusPill(fv.status)} <span class="callout__separator">·</span> ${escapeHtml(fv.file_type || "unknown type")} <span class="callout__separator">·</span> ${fv.page_count ?? "?"} page(s)`
     + (fv.reason ? `<br>${escapeHtml(fv.reason)}` : "");
 
-  // Fields grid
   const extracted = doc.extracted_data || {};
   const fieldEntries = Object.entries(extracted).filter(([key]) => key !== "line_items");
-  els.fieldsGrid.innerHTML = doc.processing_status === "PROCESSING"
-    ? `<div class="field-card processing-state"><div class="field-card__value">Extraction is still running...</div><div class="field-card__evidence">OCR and financial analysis are running in the background. This panel will refresh automatically.</div></div>`
-    : doc.processing_status === "FAILED"
+  els.fieldsGrid.innerHTML = isProcessing
+    ? `<div class="field-card processing-state"><div class="field-card__value">Extraction is in progress...</div><div class="field-card__evidence">Fields and financial checks will appear automatically.</div></div>`
+    : isFailed
     ? `<div class="field-card is-missing"><div class="field-card__value">Processing failed</div><div class="field-card__evidence">${escapeHtml(doc.error?.message || "The document could not be extracted.")}</div></div>`
     : fieldEntries.length
     ? fieldEntries.map(([key, field]) => renderFieldCard(key, field)).join("")
     : `<div class="field-card">No extracted fields available.</div>`;
 
-  // Line items table
   const lineItems = extracted.line_items;
   els.lineItemsWrap.innerHTML = Array.isArray(lineItems) && lineItems.length ? renderLineItems(lineItems) : "";
 
-  // Validation
   const validation = doc.validation;
   if (validation) {
-    els.validationSummary.className = `callout ${validation.overall_status === "PASS" ? "callout--pass" : validation.overall_status === "FAIL" ? "callout--fail" : ""}`;
+    const statusClass = validation.overall_status === "PASS" ? "callout--pass" : validation.overall_status === "FAIL" ? "callout--fail" : "callout--na";
+    els.validationSummary.className = `callout ${statusClass}`;
     els.validationSummary.innerHTML = `Overall validation: ${statusPill(validation.overall_status)}`
-      + (validation.issues && validation.issues.length ? `<ul>${validation.issues.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>` : "");
+      + (validation.issues && validation.issues.length ? `<ul>${validation.issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>` : "");
     els.checksBody.innerHTML = (validation.checks || []).map(renderCheckRow).join("")
       || `<tr><td colspan="7">No checks were evaluated.</td></tr>`;
   } else {
@@ -250,11 +367,21 @@ function openDetailFromResponse(doc) {
   }
 
   els.rawJson.textContent = JSON.stringify(doc, null, 2);
-
-  switchTab("fields");
   els.overlay.hidden = false;
-  if (doc.processing_status === "PROCESSING") {
-    setTimeout(() => openDetail(doc.document_name), 2500);
+  switchTab(wasOpen ? currentTab : "fields");
+
+  if (isProcessing) {
+    setWorkflowStage("extract");
+    if (fromUpload) setStatus(`Queued — processing "${doc.document_name}" in the background.`, "busy");
+    scheduleDetailPoll(doc.document_name);
+  } else {
+    clearTimeout(detailPollTimer);
+    setWorkflowStage(isPassed ? "store" : "idle");
+    if (activeDocumentName === doc.document_name) {
+      if (isPassed) setStatus(`Done — "${doc.document_name}" processed successfully.`, "ok");
+      if (isFailed) setStatus(`Processing failed: ${doc.error?.message || "see the detail panel."}`, "error");
+    }
+    loadDocuments({ silent: true });
   }
 }
 
@@ -264,10 +391,11 @@ function renderFieldCard(key, field) {
   const confidence = field && typeof field === "object" ? field.confidence : null;
   const isMissing = value === null || value === undefined || value === "";
   const isLowConfidence = !isMissing && confidence != null && Number(confidence) < 0.6;
+  const displayValue = value && typeof value === "object" ? JSON.stringify(value) : value;
   return `
     <div class="field-card ${isMissing ? "is-missing" : ""} ${isLowConfidence ? "is-low-confidence" : ""}">
       <div class="field-card__label">${escapeHtml(prettifyKey(key))}</div>
-      <div class="field-card__value ${isMissing ? "is-null" : ""}">${isMissing ? "Not found" : escapeHtml(String(value))}</div>
+      <div class="field-card__value ${isMissing ? "is-null" : ""}">${isMissing ? "Not found" : escapeHtml(String(displayValue))}</div>
       ${isLowConfidence ? `<div class="field-card__confidence">Low confidence: ${(Number(confidence) * 100).toFixed(0)}%</div>` : ""}
       ${evidence && evidence.source_text ? `<div class="field-card__evidence">p.${evidence.page_number ?? "?"} — “${escapeHtml(evidence.source_text)}”</div>` : ""}
     </div>`;
@@ -275,29 +403,25 @@ function renderFieldCard(key, field) {
 
 function renderLineItems(items) {
   const columns = Array.from(items.reduce((set, item) => {
-    Object.keys(item || {}).forEach((k) => set.add(k));
+    Object.keys(item || {}).forEach((key) => set.add(key));
     return set;
   }, new Set()));
   return `
     <h3>Line items</h3>
-    <table class="line-items-table">
-      <thead><tr>${columns.map((c) => `<th${isNumericColumn(items, c) ? ' class="num"' : ""}>${escapeHtml(prettifyKey(c))}</th>`).join("")}</tr></thead>
-      <tbody>
-        ${items.map((item) => `<tr>${columns.map((c) => `<td${isNumericColumn(items, c) ? ' class="num"' : ""}>${item[c] != null ? escapeHtml(String(item[c])) : "—"}</td>`).join("")}</tr>`).join("")}
-      </tbody>
-    </table>`;
+    <div class="line-items-shell"><table class="line-items-table">
+      <thead><tr>${columns.map((column) => `<th${isNumericColumn(items, column) ? ' class="num"' : ""}>${escapeHtml(prettifyKey(column))}</th>`).join("")}</tr></thead>
+      <tbody>${items.map((item) => `<tr>${columns.map((column) => `<td${isNumericColumn(items, column) ? ' class="num"' : ""}>${item[column] != null ? escapeHtml(String(item[column])) : "—"}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table></div>`;
 }
 
-function isNumericColumn(items, col) {
-  return items.some((i) => typeof i[col] === "number");
-}
+function isNumericColumn(items, column) { return items.some((item) => typeof item[column] === "number"); }
 
 function renderCheckRow(check) {
   return `
     <tr>
-      <td>${escapeHtml(prettifyKey(check.name))}</td>
+      <td>${escapeHtml(prettifyKey(check.name || "Check"))}</td>
       <td>${escapeHtml(check.period || "—")}</td>
-      <td>${escapeHtml(check.formula)}</td>
+      <td>${escapeHtml(check.formula || "—")}</td>
       <td class="num">${check.calculated_value ?? "—"}</td>
       <td class="num">${check.reported_value ?? "—"}</td>
       <td class="num">${check.variance ?? "—"}</td>
@@ -305,28 +429,28 @@ function renderCheckRow(check) {
     </tr>`;
 }
 
-function prettifyKey(key) {
-  return key.replace(/__/g, " — ").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+function prettifyKey(key) { return String(key).replace(/__/g, " — ").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()); }
 
 els.closeDetailBtn.addEventListener("click", closeDetail);
-els.overlay.addEventListener("click", (e) => { if (e.target === els.overlay) closeDetail(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
-
-function closeDetail() { els.overlay.hidden = true; }
+els.overlay.addEventListener("click", (event) => { if (event.target === els.overlay) closeDetail(); });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDetail(); });
+function closeDetail() { clearTimeout(detailPollTimer); detailPollToken += 1; els.overlay.hidden = true; }
 
 els.tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
-
 function switchTab(name) {
-  els.tabs.forEach((t) => t.classList.toggle("is-active", t.dataset.tab === name));
+  els.tabs.forEach((tab) => {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+  });
   Object.entries(els.panes).forEach(([key, pane]) => pane.classList.toggle("is-active", key === name));
 }
 
-/* ---------------- utils ---------------- */
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 }
-function escapeAttr(str) { return escapeHtml(str); }
+function escapeAttr(value) { return escapeHtml(value); }
 
+setWorkflowStage("idle");
 loadDocuments();
+checkHealth();

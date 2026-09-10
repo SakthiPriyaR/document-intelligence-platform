@@ -7,9 +7,11 @@ statements (PDF/JPG/PNG), validates the upload, extracts every meaningful field 
 LLM, checks the document's own arithmetic, and exposes everything through a REST API and a
 small dashboard.
 
-> **Status of this repo**: fully implemented and unit/API-tested locally. It has **not yet been
-> deployed** or run against real sample invoices/statements — do that next (see *Deployment* and
-> *Testing* below) before submitting. Replace the placeholder URLs in this README once deployed.
+> **Status of this repo**: fully implemented, deployed, and unit/API-tested. The public deployment
+> and health/docs URLs are listed above; a live invoice verification returned file validation
+> **PASS**, 29 extracted fields, and financial validation **PASS**. Render's free SQLite storage
+> remains suitable for the demo but is not durable across instance replacement (see *Known
+> limitations*).
 
 ## 1. Solution overview & architecture
 
@@ -102,7 +104,7 @@ Key ones:
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| POST | `/api/v1/documents/process` | Validate and synchronously process a document (`multipart/form-data`: `file`, `document_type`), returning the persisted final result. |
+| POST | `/api/v1/documents/process` | Validate and queue a document (`multipart/form-data`: `file`, `document_type`), returning a persisted `PROCESSING` record immediately when background extraction is running. |
 | GET | `/api/v1/documents/{document_name}` | Latest structured result for that file name. |
 | GET | `/api/v1/documents` | List all processed documents (dashboard feed). |
 | GET | `/api/v1/health` | Health check. |
@@ -154,8 +156,8 @@ publicly reachable at evaluation time.
   scanned PDFs. JPG/PNG uploads are sent directly to Gemini vision to avoid slow local OCR on
   camera photographs. `processing_metadata.ocr_used` tells you whether local OCR ran.
 - **LLM**: Google Gemini (`gemini-3.6-flash` by default, configurable via `GEMINI_MODEL`; swap to
-  Anthropic Claude by setting `LLM_PROVIDER=anthropic`),
-  called once per document with the full page-tagged text. The prompt (see
+  Anthropic Claude by setting `LLM_PROVIDER=anthropic`), called through the current `google-genai`
+  SDK with a controlled model fallback. The prompt (see
   `extraction_service.py`) requires: extract everything visible (not just the minimum field
   list), return `null` rather than invent a value, and attach `evidence.source_text` +
   `evidence.page_number` to every field.
@@ -201,7 +203,7 @@ cd backend
 pytest -v
 ```
 
-16 tests, all passing without any network access or API key:
+24 tests, all passing without any network access or API key:
 - `tests/test_validation.py` — file-validation edge cases (empty, unsupported, corrupted,
   page-limit) and financial-formula correctness (PASS/FAIL/NOT_APPLICABLE, multi-period balance
   sheet, parenthesised-negative parsing).
@@ -247,7 +249,7 @@ This project was built with the assistance of an AI coding assistant (Claude), u
 generating the initial FastAPI project scaffold and module boundaries, the financial-validation
 formula engine, the frontend dashboard (HTML/CSS/JS), the test suite, and this README. All code
 was reviewed, run, and test-verified locally as part of the same session
-(`cd backend && pytest -v` → 16/16 passing) before being written to this repository.
+(`cd backend && pytest -v` → 24/24 passing) before being written to this repository.
 
 ## Project layout
 
