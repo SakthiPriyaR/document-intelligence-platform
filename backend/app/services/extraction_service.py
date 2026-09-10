@@ -94,18 +94,26 @@ def _strip_code_fences(text: str) -> str:
 
 def _parse_json_response(raw_response: str) -> dict:
     """Parse strict JSON plus common model wrappers around a JSON object."""
-    cleaned = _strip_code_fences(raw_response)
+    cleaned = _strip_code_fences(raw_response).lstrip("\ufeff").strip()
+    if cleaned.lower().startswith("json\n"):
+        cleaned = cleaned[5:].lstrip()
     candidates = [cleaned]
-    start, end = cleaned.find("{"), cleaned.rfind("}")
-    if start >= 0 and end > start:
-        candidates.append(cleaned[start:end + 1])
+    start = cleaned.find("{")
+    if start >= 0:
+        candidates.append(cleaned[start:])
     for candidate in candidates:
         try:
             parsed = json.loads(candidate)
             if isinstance(parsed, dict):
                 return parsed
         except json.JSONDecodeError:
-            continue
+            repaired = re.sub(r",\s*([}\]])", r"\1", candidate)
+            try:
+                parsed = json.loads(repaired)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
     logger.error("LLM returned non-JSON output: %s", cleaned[:500])
     raise ExtractionError("The AI extraction service returned an unparseable response.")
 
@@ -204,7 +212,18 @@ def run_extraction(document_type: str, ocr_result: OCRResult) -> dict:
     else:
         raise ExtractionError(f"Unsupported LLM_PROVIDER: {settings.LLM_PROVIDER}")
 
-    parsed = _parse_json_response(raw_response)
+    try:
+        parsed = _parse_json_response(raw_response)
+    except ExtractionError:
+        # A constrained second pass handles occasional model wrappers or
+        # partially formatted output without weakening the schema contract.
+        retry_prompt = user_prompt + "\nReturn ONLY one valid JSON object. Do not add markdown, labels, or commentary."
+        if settings.LLM_PROVIDER == "gemini":
+            parsed = _parse_json_response(
+                _call_gemini(_SYSTEM_PROMPT, retry_prompt, getattr(ocr_result, "image_bytes", None))
+            )
+        else:
+            raise
 
     extracted_data = parsed.get("extracted_data")
     if not isinstance(extracted_data, dict):
