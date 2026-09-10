@@ -29,7 +29,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./document_intelligence.db"
 
     # OCR
-    OCR_DPI: int = 200
+    # 150 DPI is sufficient for most invoices and reduces raster/OCR latency.
+    OCR_DPI: int = 150
     TESSERACT_CMD: str | None = None  # override path to tesseract binary if needed
 
     # LLM extraction — provider-agnostic. Defaults to Google Gemini because its
@@ -44,8 +45,9 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
 
-    LLM_REQUEST_TIMEOUT_SECONDS: int = 60
-    LLM_MAX_RETRIES: int = 2
+    # Keep synchronous free-tier requests bounded; transient failures get one retry.
+    LLM_REQUEST_TIMEOUT_SECONDS: int = 40
+    LLM_MAX_RETRIES: int = 1
 
     @property
     def active_llm_model(self) -> str:
