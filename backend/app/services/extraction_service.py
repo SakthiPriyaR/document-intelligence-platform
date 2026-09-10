@@ -103,13 +103,13 @@ def _parse_json_response(raw_response: str) -> dict:
         candidates.append(cleaned[start:])
     for candidate in candidates:
         try:
-            parsed = json.loads(candidate)
+            parsed = json.loads(candidate, strict=False)
             if isinstance(parsed, dict):
                 return parsed
         except json.JSONDecodeError:
             repaired = re.sub(r",\s*([}\]])", r"\1", candidate)
             try:
-                parsed = json.loads(repaired)
+                parsed = json.loads(repaired, strict=False)
                 if isinstance(parsed, dict):
                     return parsed
             except json.JSONDecodeError:

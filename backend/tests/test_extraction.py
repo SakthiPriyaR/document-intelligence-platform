@@ -9,3 +9,8 @@ def test_parse_json_response_accepts_markdown_wrapped_json():
 def test_parse_json_response_accepts_trailing_comma_and_commentary():
     result = _parse_json_response('Result: {"extracted_data": {},}')
     assert result == {"extracted_data": {}}
+
+
+def test_parse_json_response_accepts_line_breaks_in_evidence_text():
+    result = _parse_json_response('{"extracted_data": {"note": {"value": "line1\nline2"}}}')
+    assert result["extracted_data"]["note"]["value"] == "line1\nline2"
