@@ -59,7 +59,15 @@ def _ocr_image_bytes(raw: bytes) -> str:
 
     _configure_tesseract()
     with Image.open(io.BytesIO(raw)) as img:
+        original_size = img.size
         img = img.convert("RGB")
+        settings = get_settings()
+        longest_side = max(img.size)
+        if longest_side > settings.OCR_MAX_IMAGE_DIM:
+            scale = settings.OCR_MAX_IMAGE_DIM / longest_side
+            resized = (max(1, int(img.width * scale)), max(1, int(img.height * scale)))
+            img = img.resize(resized, Image.Resampling.LANCZOS)
+            logger.info("Resized image for OCR from %sx%s to %sx%s", *original_size, *resized)
         return pytesseract.image_to_string(img)
 
 

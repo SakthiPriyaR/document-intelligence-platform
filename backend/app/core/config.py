@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # OCR
     # 150 DPI is sufficient for most invoices and reduces raster/OCR latency.
     OCR_DPI: int = 150
+    OCR_MAX_IMAGE_DIM: int = 1800
     TESSERACT_CMD: str | None = None  # override path to tesseract binary if needed
 
     # LLM extraction — provider-agnostic. Defaults to Google Gemini because its
