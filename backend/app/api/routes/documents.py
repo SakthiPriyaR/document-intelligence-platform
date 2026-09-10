@@ -30,7 +30,12 @@ router = APIRouter()
 @router.get("/health", response_model=HealthResponse, tags=["health"])
 def health_check() -> HealthResponse:
     settings = get_settings()
-    return HealthResponse(app_name=settings.APP_NAME, environment=settings.ENVIRONMENT, timestamp=datetime.now(timezone.utc))
+    configured = bool(settings.GEMINI_API_KEY if settings.LLM_PROVIDER == "gemini" else settings.ANTHROPIC_API_KEY)
+    return HealthResponse(
+        app_name=settings.APP_NAME, environment=settings.ENVIRONMENT,
+        timestamp=datetime.now(timezone.utc), llm_provider=settings.LLM_PROVIDER,
+        llm_configured=configured,
+    )
 
 
 @router.post("/documents/process", response_model=DocumentProcessResponse, tags=["documents"])

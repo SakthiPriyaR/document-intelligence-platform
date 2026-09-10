@@ -130,8 +130,11 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
         except Exception as exc:  # network / rate-limit / API errors
             last_exc = exc
             logger.warning("LLM call attempt %d failed: %s", attempt, exc)
+            if getattr(exc, "code", None) in (400, 401, 403):
+                break
 
-    raise ExtractionError("The AI extraction service failed after retries.") from last_exc
+    detail = str(last_exc or "unknown error").replace(settings.GEMINI_API_KEY or "", "[redacted]")
+    raise ExtractionError(f"The AI extraction service failed: {detail[:300]}") from last_exc
 
 
 def _call_anthropic(system_prompt: str, user_prompt: str) -> str:

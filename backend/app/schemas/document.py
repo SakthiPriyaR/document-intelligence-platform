@@ -109,3 +109,5 @@ class HealthResponse(BaseModel):
     app_name: str
     environment: str
     timestamp: datetime
+    llm_provider: str | None = None
+    llm_configured: bool = False
