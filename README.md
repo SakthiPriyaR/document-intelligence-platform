@@ -27,7 +27,7 @@ See [`docs/architecture.svg`](docs/architecture.svg) (rendered diagram) and
     corruption/empty checks, page-count limit). Runs **before** any OCR/AI call.
   - `app/services/ocr_service.py` — native PDF text-layer extraction (pdfplumber) with a
     per-page fallback to OCR (PyMuPDF rasterisation + Tesseract) for scanned pages/images.
-  - `app/services/extraction_service.py` — calls an LLM (Anthropic Claude by default) with a
+  - `app/services/extraction_service.py` — calls an LLM (Google Gemini by default) with a
     strict "extract everything you can see, evidence-backed, never invent" prompt and parses
     the structured JSON it returns.
   - `app/services/financial_validation_service.py` — a formula engine that runs the correct
@@ -49,7 +49,7 @@ See [`docs/architecture.svg`](docs/architecture.svg) (rendered diagram) and
 | Native PDF text | **pdfplumber** | Reliable text-layer + layout extraction for born-digital PDFs; avoids OCR cost/error when a real text layer exists. |
 | PDF rasterisation | **PyMuPDF (fitz)** | Pure-wheel, no system Poppler dependency, fast page→image rendering for the OCR fallback. |
 | OCR | **Tesseract** (via `pytesseract`) | Free, local, no external API needed for the assessment's 3-day scope; swappable for Google Vision/LlamaParse/etc. by editing `ocr_service.py` only. |
-| Field/table extraction | **Anthropic Claude** (`anthropic` SDK) | Strong structured-JSON extraction; isolated behind `extraction_service.run_extraction()` so the provider can be swapped without touching any other module. |
+| Field/table extraction | **Google Gemini** (`gemini-2.5-flash`, default) | Free tier with no credit card required, generous limits — practical for a zero-budget evaluation deployment. Isolated behind `extraction_service.run_extraction()`, with Anthropic Claude available as a drop-in alternative via `LLM_PROVIDER=anthropic`. |
 | Persistence | **SQLAlchemy + SQLite** (default) | Zero-setup locally; one env-var change (`DATABASE_URL`) moves to Postgres/MySQL for deployment. |
 | Frontend | **Plain HTML/CSS/JS** | Explicitly permitted by the brief; no build step, one static bundle FastAPI serves directly. |
 | Testing | **pytest** + FastAPI `TestClient` | File validation and financial-formula tests need no network; API-flow tests monkeypatch OCR/LLM so the suite runs with zero external calls or API keys. |
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 #   Debian/Ubuntu: sudo apt-get install tesseract-ocr
 #   macOS:         brew install tesseract
 
-cp ../.env.example .env      # then fill in ANTHROPIC_API_KEY at minimum
+cp ../.env.example .env      # then fill in GEMINI_API_KEY at minimum (free, no card: aistudio.google.com/apikey)
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -82,8 +82,9 @@ Key ones:
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | SQLite by default; point at Postgres/MySQL for deployment. |
-| `ANTHROPIC_API_KEY` | Required for AI field extraction — read from the environment only, never hardcoded. |
-| `ANTHROPIC_MODEL` | Defaults to `claude-sonnet-4-6`. |
+| `GEMINI_API_KEY` | Required for AI field extraction (default provider) — read from the environment only, never hardcoded. Free tier, no card: aistudio.google.com/apikey. |
+| `GEMINI_MODEL` | Defaults to `gemini-2.5-flash`. |
+| `LLM_PROVIDER` | `gemini` (default) or `anthropic` — set `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL` instead if switching. |
 | `MAX_PAGE_COUNT`, `MAX_FILE_SIZE_MB` | Input-validation limits. |
 | `VALIDATION_ABS_TOLERANCE`, `VALIDATION_REL_TOLERANCE` | Financial-check tolerance (see §9). |
 
@@ -137,7 +138,7 @@ the API and the static frontend from one container on `$PORT`/8000).
 1. Push this repo to a **public** GitHub repository.
 2. On your platform, create a new **Web Service** from the repo, build context = repo root,
    Dockerfile = `backend/Dockerfile`.
-3. Set environment variables from `.env.example` (at minimum `ANTHROPIC_API_KEY`; set
+3. Set environment variables from `.env.example` (at minimum `GEMINI_API_KEY`; set
    `DATABASE_URL` to a managed Postgres URL if you don't want to rely on the container's
    ephemeral filesystem for SQLite).
 4. Deploy. Confirm `/api/v1/health` returns `200`, then confirm `/` (frontend) and `/docs`
@@ -151,7 +152,8 @@ publicly reachable at evaluation time.
 
 - **OCR/parsing**: pdfplumber for native PDF text; PyMuPDF + Tesseract OCR as the fallback for
   scanned PDFs and all JPG/PNG uploads. `processing_metadata.ocr_used` tells you which path ran.
-- **LLM**: Anthropic Claude (`claude-sonnet-4-6` by default, configurable via `ANTHROPIC_MODEL`),
+- **LLM**: Google Gemini (`gemini-2.5-flash` by default, configurable via `GEMINI_MODEL`; swap to
+  Anthropic Claude by setting `LLM_PROVIDER=anthropic`),
   called once per document with the full page-tagged text. The prompt (see
   `extraction_service.py`) requires: extract everything visible (not just the minimum field
   list), return `null` rather than invent a value, and attach `evidence.source_text` +

@@ -63,7 +63,7 @@ def process_document(db: Session, document_name: str, document_type: str, raw: b
         metadata = ProcessingMetadata(
             ocr_used=ocr_result.ocr_used,
             llm_provider=settings.LLM_PROVIDER,
-            llm_model=settings.ANTHROPIC_MODEL,
+            llm_model=settings.active_llm_model,
             processed_at=datetime.now(timezone.utc),
             processing_time_ms=int((time.monotonic() - start) * 1000),
         )

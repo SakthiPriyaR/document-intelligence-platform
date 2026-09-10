@@ -91,6 +91,39 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
+def _call_gemini(system_prompt: str, user_prompt: str) -> str:
+    import google.generativeai as genai
+
+    settings = get_settings()
+    if not settings.GEMINI_API_KEY:
+        raise ExtractionError(
+            "GEMINI_API_KEY is not configured on the server. "
+            "Set it as an environment variable to enable AI extraction."
+        )
+
+    genai.configure(api_key=settings.GEMINI_API_KEY)
+    model = genai.GenerativeModel(model_name=settings.GEMINI_MODEL, system_instruction=system_prompt)
+
+    last_exc: Exception | None = None
+    for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
+        try:
+            response = model.generate_content(
+                user_prompt,
+                generation_config={
+                    "temperature": 0,
+                    "response_mime_type": "application/json",
+                    "max_output_tokens": 4000,
+                },
+                request_options={"timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS},
+            )
+            return response.text
+        except Exception as exc:  # network / rate-limit / API errors
+            last_exc = exc
+            logger.warning("LLM call attempt %d failed: %s", attempt, exc)
+
+    raise ExtractionError("The AI extraction service failed after retries.") from last_exc
+
+
 def _call_anthropic(system_prompt: str, user_prompt: str) -> str:
     import anthropic
 
@@ -127,7 +160,9 @@ def run_extraction(document_type: str, ocr_result: OCRResult) -> dict:
 
     user_prompt = _build_user_prompt(document_type, ocr_result)
 
-    if settings.LLM_PROVIDER == "anthropic":
+    if settings.LLM_PROVIDER == "gemini":
+        raw_response = _call_gemini(_SYSTEM_PROMPT, user_prompt)
+    elif settings.LLM_PROVIDER == "anthropic":
         raw_response = _call_anthropic(_SYSTEM_PROMPT, user_prompt)
     else:
         raise ExtractionError(f"Unsupported LLM_PROVIDER: {settings.LLM_PROVIDER}")

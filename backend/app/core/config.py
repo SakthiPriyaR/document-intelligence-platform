@@ -31,12 +31,24 @@ class Settings(BaseSettings):
     OCR_DPI: int = 200
     TESSERACT_CMD: str | None = None  # override path to tesseract binary if needed
 
-    # LLM extraction (Anthropic Claude is used by default; keep provider-agnostic)
-    LLM_PROVIDER: str = "anthropic"
+    # LLM extraction — provider-agnostic. Defaults to Google Gemini because its
+    # free tier (Flash models) needs no credit card, which matters for a
+    # zero-budget evaluation deployment. Set LLM_PROVIDER=anthropic to use
+    # Claude instead (requires a funded Anthropic account).
+    LLM_PROVIDER: str = "gemini"
+
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
     ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
+
     LLM_REQUEST_TIMEOUT_SECONDS: int = 60
     LLM_MAX_RETRIES: int = 2
+
+    @property
+    def active_llm_model(self) -> str:
+        return self.GEMINI_MODEL if self.LLM_PROVIDER == "gemini" else self.ANTHROPIC_MODEL
 
     # Financial validation tolerance
     VALIDATION_ABS_TOLERANCE: float = 1.0     # absolute currency-unit tolerance
