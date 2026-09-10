@@ -103,7 +103,8 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
         )
 
     genai.configure(api_key=settings.GEMINI_API_KEY)
-    model = genai.GenerativeModel(model_name=settings.GEMINI_MODEL, system_instruction=system_prompt)
+    active_model = settings.GEMINI_MODEL
+    model = genai.GenerativeModel(model_name=active_model, system_instruction=system_prompt)
 
     last_exc: Exception | None = None
     for attempt in range(1, settings.LLM_MAX_RETRIES + 2):
@@ -130,6 +131,11 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
         except Exception as exc:  # network / rate-limit / API errors
             last_exc = exc
             logger.warning("LLM call attempt %d failed: %s", attempt, exc)
+            if getattr(exc, "code", None) == 404 and active_model != "gemini-3.6-flash":
+                active_model = "gemini-3.6-flash"
+                model = genai.GenerativeModel(model_name=active_model, system_instruction=system_prompt)
+                logger.info("Gemini model unavailable; retrying with fallback model=%s", active_model)
+                continue
             if getattr(exc, "code", None) in (400, 401, 403):
                 break
 

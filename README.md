@@ -51,7 +51,7 @@ See [`docs/architecture.svg`](docs/architecture.svg) (rendered diagram) and
 | Native PDF text | **pdfplumber** | Reliable text-layer + layout extraction for born-digital PDFs; avoids OCR cost/error when a real text layer exists. |
 | PDF rasterisation | **PyMuPDF (fitz)** | Pure-wheel, no system Poppler dependency, fast page→image rendering for the OCR fallback. |
 | OCR | **Tesseract** (via `pytesseract`) | Free, local, no external API needed for the assessment's 3-day scope; swappable for Google Vision/LlamaParse/etc. by editing `ocr_service.py` only. |
-| Field/table extraction | **Google Gemini** (`gemini-2.5-flash`, default) | Free tier with no credit card required, generous limits — practical for a zero-budget evaluation deployment. Isolated behind `extraction_service.run_extraction()`, with Anthropic Claude available as a drop-in alternative via `LLM_PROVIDER=anthropic`. |
+| Field/table extraction | **Google Gemini** (`gemini-3.6-flash`, default) | Fast multimodal extraction with a free-tier key. Isolated behind `extraction_service.run_extraction()`, with Anthropic Claude available as a drop-in alternative via `LLM_PROVIDER=anthropic`. |
 | Persistence | **SQLAlchemy + SQLite** (default) | Zero-setup locally; one env-var change (`DATABASE_URL`) moves to Postgres/MySQL for deployment. |
 | Frontend | **Plain HTML/CSS/JS** | Explicitly permitted by the brief; no build step, one static bundle FastAPI serves directly. |
 | Testing | **pytest** + FastAPI `TestClient` | File validation and financial-formula tests need no network; API-flow tests monkeypatch OCR/LLM so the suite runs with zero external calls or API keys. |
@@ -85,7 +85,7 @@ Key ones:
 |---|---|
 | `DATABASE_URL` | SQLite by default; point at Postgres/MySQL for deployment. |
 | `GEMINI_API_KEY` | Required for AI field extraction (default provider) — read from the environment only, never hardcoded. Free tier, no card: aistudio.google.com/apikey. |
-| `GEMINI_MODEL` | Defaults to `gemini-2.5-flash`. |
+| `GEMINI_MODEL` | Defaults to `gemini-3.6-flash`; the service falls back to it when an older configured model returns 404. |
 | `LLM_PROVIDER` | `gemini` (default) or `anthropic` — set `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL` instead if switching. |
 | `MAX_PAGE_COUNT`, `MAX_FILE_SIZE_MB` | Input-validation limits. |
 | `VALIDATION_ABS_TOLERANCE`, `VALIDATION_REL_TOLERANCE` | Financial-check tolerance (see §9). |
@@ -153,7 +153,7 @@ publicly reachable at evaluation time.
 - **OCR/parsing**: pdfplumber for native PDF text; PyMuPDF + Tesseract OCR as the fallback for
   scanned PDFs. JPG/PNG uploads are sent directly to Gemini vision to avoid slow local OCR on
   camera photographs. `processing_metadata.ocr_used` tells you whether local OCR ran.
-- **LLM**: Google Gemini (`gemini-2.5-flash` by default, configurable via `GEMINI_MODEL`; swap to
+- **LLM**: Google Gemini (`gemini-3.6-flash` by default, configurable via `GEMINI_MODEL`; swap to
   Anthropic Claude by setting `LLM_PROVIDER=anthropic`),
   called once per document with the full page-tagged text. The prompt (see
   `extraction_service.py`) requires: extract everything visible (not just the minimum field
