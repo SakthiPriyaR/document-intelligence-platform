@@ -178,6 +178,13 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
         ),
     )
     active_model = settings.GEMINI_MODEL
+    if active_model == "gemini-2.5-flash":
+        # This model is the legacy value still present in some Render
+        # environments and can hang until the request timeout. Use the
+        # supported fallback immediately rather than spending 40 seconds on
+        # a model that has already failed for this deployment.
+        active_model = "gemini-3.6-flash"
+        logger.info("Replacing legacy Gemini model setting with model=%s", active_model)
 
     def _status_code(exc: Exception) -> int | None:
         code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
@@ -231,7 +238,7 @@ def _call_gemini(system_prompt: str, user_prompt: str, image_bytes: bytes | None
             last_exc = exc
             logger.warning("LLM call attempt %d failed: %s", attempt, exc)
             status_code = _status_code(exc)
-            if status_code in (404, 429, 500, 502, 503, 504) and active_model != "gemini-3.6-flash":
+            if active_model != "gemini-3.6-flash" and status_code not in (400, 401, 403):
                 active_model = "gemini-3.6-flash"
                 logger.info(
                     "Gemini model unavailable (status=%s); retrying with fallback model=%s",

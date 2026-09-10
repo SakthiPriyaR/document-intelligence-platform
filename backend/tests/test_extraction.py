@@ -111,6 +111,45 @@ def test_call_gemini_falls_back_on_temporary_model_error(monkeypatch):
     monkeypatch.setitem(sys.modules, "google.genai", fake_genai)
     monkeypatch.setitem(sys.modules, "google.genai.types", fake_types)
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.4-flash")
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+
+    from app.core.config import get_settings
+    get_settings.cache_clear()
+
+    result = _call_gemini("system", "extract this")
+
+    assert result == '{"extracted_data": {}}'
+    assert [call["model"] for call in calls] == ["gemini-2.4-flash", "gemini-3.6-flash"]
+
+
+def test_call_gemini_skips_known_legacy_model(monkeypatch):
+    calls = []
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(text='{"extracted_data": {}}')
+
+    class FakeConfig:
+        def __init__(self, **kwargs):
+            self.values = kwargs
+
+    fake_types = ModuleType("google.genai.types")
+    fake_types.GenerateContentConfig = FakeConfig
+    fake_types.HttpOptions = lambda **kwargs: kwargs
+    fake_types.ThinkingConfig = FakeConfig
+
+    fake_genai = ModuleType("google.genai")
+    fake_genai.types = fake_types
+    fake_genai.Client = lambda *, api_key, http_options: SimpleNamespace(models=FakeModels())
+
+    fake_google = ModuleType("google")
+    fake_google.genai = fake_genai
+    monkeypatch.setitem(sys.modules, "google", fake_google)
+    monkeypatch.setitem(sys.modules, "google.genai", fake_genai)
+    monkeypatch.setitem(sys.modules, "google.genai.types", fake_types)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash")
     monkeypatch.setenv("LLM_PROVIDER", "gemini")
 
@@ -120,4 +159,4 @@ def test_call_gemini_falls_back_on_temporary_model_error(monkeypatch):
     result = _call_gemini("system", "extract this")
 
     assert result == '{"extracted_data": {}}'
-    assert [call["model"] for call in calls] == ["gemini-2.5-flash", "gemini-3.6-flash"]
+    assert [call["model"] for call in calls] == ["gemini-3.6-flash"]
