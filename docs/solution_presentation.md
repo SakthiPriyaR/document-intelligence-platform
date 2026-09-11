@@ -1,5 +1,5 @@
 # Document Intelligence Platform
-## AI Engineer Internship Case Study
+##  Case Study
 
 End-to-end document extraction, validation and reconciliation
 
@@ -170,11 +170,4 @@ for evidence-backed document field extraction after explicit configuration throu
 
 ---
 
-# 12. Six-minute demo walkthrough
 
-1. Introduce the problem: financial files are unstructured and difficult to audit.
-2. Show the live dashboard and choose a document type.
-3. Upload a supported file and explain validation before OCR/AI.
-4. Explain the path: OCR -> Gemini extraction -> financial validation -> persisted result.
-5. Open the result and show evidence, line items, validation checks and Raw JSON.
-6. Close with the Render deployment, Swagger, 25 tests, current limitations and production plan.
