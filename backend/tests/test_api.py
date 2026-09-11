@@ -51,6 +51,13 @@ def test_health_check(client):
     assert body["service"] == "document-intelligence-platform"
     assert body["checks"]["api"] == "operational"
     assert body["checks"]["database"] == "connected"
+    assert body["status_page_url"] == "/status"
+
+
+def test_status_page(client):
+    resp = client.get("/status")
+    assert resp.status_code == 200
+    assert "Service status" in resp.text
 
 
 def test_process_then_get_by_name_and_list(client):

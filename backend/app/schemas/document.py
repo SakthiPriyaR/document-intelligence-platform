@@ -112,3 +112,4 @@ class HealthResponse(BaseModel):
     timestamp: datetime
     checks: dict[str, str]
     documentation_url: str = "/docs"
+    status_page_url: str = "/status"

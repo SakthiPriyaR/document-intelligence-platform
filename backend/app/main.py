@@ -68,3 +68,8 @@ if os.path.isdir(_FRONTEND_DIR):
     @app.get("/", include_in_schema=False)
     def serve_frontend():
         return FileResponse(os.path.join(_FRONTEND_DIR, "templates", "index.html"))
+
+    @app.get("/status", include_in_schema=False)
+    def serve_status_page():
+        """Serve a browser-friendly view of the JSON health endpoint."""
+        return FileResponse(os.path.join(_FRONTEND_DIR, "templates", "status.html"))
