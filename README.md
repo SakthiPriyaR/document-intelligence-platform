@@ -10,7 +10,7 @@ small dashboard.
 > **Status of this repo**: fully implemented, deployed, and unit/API-tested. The public deployment
 > and health/docs URLs are listed above; a live invoice verification returned file validation
 > **PASS**, 29 extracted fields, and financial validation **PASS**. Render's free SQLite storage
-> remains suitable for the demo but is not durable across instance replacement (see *Known
+> remains suitable for the demo but is not durable across instance replacement (Known
 > limitations*).
 
 ## 1. Solution overview & architecture
